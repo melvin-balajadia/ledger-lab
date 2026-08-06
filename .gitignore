@@ -1,0 +1,56 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# env / secrets  -- never commit DB credentials
+.env
+.env.local
+.env.*.local
+*.pem
+
+# build output
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# db dumps
+*.sql.bak
+*.dump
+
+# real project data -- full plaintext copies of peso amounts and worker
+# names. Schema/migrations (db/schema.sql, db/migrations/*.sql,
+# db/load_seed*.sql) are code and stay tracked; these are not.
+db/backupdb.sql
+db/verify.sql
+db/rcsni_cost_clean_*.sql
+db/seed/*.csv
+
+# the original spreadsheets accounting sent -- never commit these
+etl/source/
+
+# uploaded PO attachment images -- back these up alongside the DB
+# (see scripts/backup-db.ps1), don't commit them
+server/uploads/
+
+# generated DB backups (scripts/backup-db.ps1, the in-app "Backup now"
+# button) -- full data dumps, never commit these
+backups/
