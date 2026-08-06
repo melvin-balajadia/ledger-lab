@@ -1,4 +1,4 @@
-# Plaridel Extension — Cost & Payroll Monitoring
+# LedgerLab — Plaridel Extension
 
 Internal tool replacing two hand-maintained spreadsheets. **One user** (an accountant),
 running locally. She built the spreadsheets herself and asked for this because monitoring
@@ -120,12 +120,12 @@ Rows that could not be confidently parsed are loaded with `needs_review = 1` rat
 dropped. The app surfaces these in a review queue where she fixes them in place. Never
 silently drop or auto-correct a flagged row.
 
-| Source | Flagged | Why |
-|---|---:|---|
-| `replenishments` | 6 | 4 impossible dates, 2 halves of one split-JPL row |
-| `payroll_entries` (no JPL) | 19 | Worker had left — not an error, needs a bucket |
-| `purchase_orders` | 1 | Payment terms do not total 100% |
-| `weekly_budget_additions` | 12 | See below |
+| Source                     | Flagged | Why                                               |
+| -------------------------- | ------: | ------------------------------------------------- |
+| `replenishments`           |       6 | 4 impossible dates, 2 halves of one split-JPL row |
+| `payroll_entries` (no JPL) |      19 | Worker had left — not an error, needs a bucket    |
+| `purchase_orders`          |       1 | Payment terms do not total 100%                   |
+| `weekly_budget_additions`  |      12 | See below                                         |
 
 **`weekly_budget_additions` has a source defect.** Four blocks in
 `WEEKLY_ADDITIONAL_FOR_BUDGET_` are all labelled `JULY 06-JULY 12, 2026` — the author copied
@@ -136,10 +136,10 @@ are corrected**; derive weekly figures from the fact tables instead, which are u
 
 Known and expected discrepancies — do not "fix" these in code:
 
-| | Amount | Why |
-|---|---:|---|
-| Replenishments vs sheet | −95,650.00 | One row split across two JPL codes; the division is unknown, both rows are at 0 pending her answer |
-| Payroll vs sheet | +185,787.91 | 10 weeks where the source's own worker rows disagree with its stated weekly total |
+|                         |      Amount | Why                                                                                                |
+| ----------------------- | ----------: | -------------------------------------------------------------------------------------------------- |
+| Replenishments vs sheet |  −95,650.00 | One row split across two JPL codes; the division is unknown, both rows are at 0 pending her answer |
+| Payroll vs sheet        | +185,787.91 | 10 weeks where the source's own worker rows disagree with its stated weekly total                  |
 
 One PO has payment terms that do not total 100% and is flagged in `remarks`.
 

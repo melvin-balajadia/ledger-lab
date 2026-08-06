@@ -1,4 +1,4 @@
-# Plaridel Extension — Cost & Payroll Monitoring
+# LedgerLab — Plaridel Extension
 
 Internal dashboard replacing two hand-maintained spreadsheets.
 React (Vite) + Express + MySQL 8. Single local user.
@@ -25,11 +25,13 @@ EXIT;
 ### 2. Create the schema
 
 Mac / Linux / Git Bash:
+
 ```bash
 mysql -u root -p < db/schema.sql
 ```
 
 Windows PowerShell (`<` is not supported there):
+
 ```powershell
 Get-Content db\schema.sql | mysql -u root -p
 ```
@@ -52,28 +54,28 @@ Get-Content ..\load_seed.sql | mysql --local-infile=1 -u root -p rcsni_cost
 
 The load script prints row counts, a reconciliation, and the retention table.
 
-| Table | Rows |
-|---|---:|
-| suppliers | 324 |
-| planning_lines | 99 |
-| purchase_orders | 265 |
-| po_payments | 276 |
-| po_payment_terms | 85 |
-| replenishments | 1,563 |
-| cash_advances | 19 |
-| additional_payments | 28 |
-| payroll_periods | 51 |
-| workers | 246 |
-| payroll_entries | 3,822 |
+| Table               |  Rows |
+| ------------------- | ----: |
+| suppliers           |   324 |
+| planning_lines      |    99 |
+| purchase_orders     |   265 |
+| po_payments         |   276 |
+| po_payment_terms    |    85 |
+| replenishments      | 1,563 |
+| cash_advances       |    19 |
+| additional_payments |    28 |
+| payroll_periods     |    51 |
+| workers             |   246 |
+| payroll_entries     | 3,822 |
 
 Reconciliation against the spreadsheet's own totals:
 
-| | Extracted | Sheet | Diff |
-|---|---:|---:|---:|
-| cash_advances | 2,201,128.33 | 2,201,128.33 | 0.00 |
-| additional_payments | 26,631,738.32 | 26,631,738.32 | 0.00 |
-| replenishments | 13,256,268.29 | 13,351,918.29 | −95,650.00 |
-| payroll_entries | 19,897,979.97 | 19,712,192.06 | +185,787.91 |
+|                     |     Extracted |         Sheet |        Diff |
+| ------------------- | ------------: | ------------: | ----------: |
+| cash_advances       |  2,201,128.33 |  2,201,128.33 |        0.00 |
+| additional_payments | 26,631,738.32 | 26,631,738.32 |        0.00 |
+| replenishments      | 13,256,268.29 | 13,351,918.29 |  −95,650.00 |
+| payroll_entries     | 19,897,979.97 | 19,712,192.06 | +185,787.91 |
 
 **Both differences are expected.** The −95,650.00 is one replenishment charged
 to two JPL codes at once, held at zero until accounting says how it divides.

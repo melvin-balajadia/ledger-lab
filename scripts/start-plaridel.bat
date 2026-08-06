@@ -16,7 +16,7 @@ if errorlevel 1 (
     echo.
     echo Could not start MySQL. Please contact IT.
     echo.
-    pause
+    timeout /t 4 /nobreak >nul
     exit /b 1
   )
 )
@@ -38,4 +38,6 @@ echo   Close it when you are finished.
 echo ============================================
 echo.
 node index.js
-pause
+rem If node exits (crash, or she closed it), show the window for a few
+rem seconds so any error is readable, then close on its own -- no keypress.
+timeout /t 8 /nobreak >nul
