@@ -21,7 +21,7 @@ Only needed once, on a machine that has never run this app before.
 - Node.js LTS (18+)
 - MySQL 8.0 Server (Community edition is fine)
 
-### 1b. Create the database and import the data
+### 1b. Import the data
 
 The single file to bring to a new machine is **`db/rcsni_cost_clean_2026-08-06.sql`**
 — a full dump of the schema *and* the real, corrected project data (every
@@ -30,30 +30,45 @@ test/sample rows left active). Nothing else under `db/` needs to run —
 not `schema.sql`, not `load_seed.sql`, not anything in `db/migrations/`.
 Those are dev-bootstrap and history, already baked into this one file.
 
+The file is self-contained (it creates the `rcsni_cost` database itself
+via `CREATE DATABASE IF NOT EXISTS` + `USE`) — don't create the database
+first, that's redundant. Just run:
+
 ```powershell
-mysql -u root -p -e "CREATE DATABASE rcsni_cost CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
-Get-Content db\rcsni_cost_clean_2026-08-06.sql | mysql -u root -p rcsni_cost
+Get-Content db\rcsni_cost_clean_2026-08-06.sql | mysql -u root -p
 ```
 
 Git Bash / Mac / Linux:
 
 ```bash
-mysql -u root -p -e "CREATE DATABASE rcsni_cost CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
-mysql -u root -p rcsni_cost < db/rcsni_cost_clean_2026-08-06.sql
+mysql -u root -p < db/rcsni_cost_clean_2026-08-06.sql
 ```
 
-**This file goes stale the moment real data changes again** (a correction,
-a new migration, a week of her using the app). Before any future
-deployment, regenerate it from whichever database is currently live and
-correct — either:
+Note there's **no database name after `-p`** on either command — the file
+selects it itself. Passing one anyway doesn't hurt, but it's unnecessary.
+
+**Using MySQL Workbench instead of the command line:** Server → Data
+Import/Restore → "Import from Self-Contained File" → browse to this
+`.sql` → Start Import. Don't set a "Default Target Schema" — the file
+already declares its own database, and older exports that didn't
+(pre-2026-08-06) fail in Workbench with `ERROR 1046: No database selected`
+because Workbench's restore doesn't select one for you the way passing a
+database name on the CLI does.
+
+**This file goes stale the moment real data changes again** (a
+correction, a new migration, a week of her using the app). Before any
+future deployment, regenerate it from whichever database is currently
+live and correct — either:
 
 ```bash
-mysqldump -u root -p --routines --triggers --single-transaction rcsni_cost > db/rcsni_cost_clean_<today>.sql
+mysqldump -u root -p --routines --triggers --single-transaction --databases rcsni_cost > db/rcsni_cost_clean_<today>.sql
 ```
 
-or just click **"Backup now"** in the app itself (top of every screen) —
-same `mysqldump`, drops the file in `backups/` instead. Either way, that
-fresh file is what you import on the new machine, not this dated one.
+(the `--databases` flag matters — it's what makes the file self-contained
+for Workbench; leaving it off reproduces the exact error above) — or just
+click **"Backup now"** in the app itself (top of every screen), which
+already uses `--databases` under the hood. Either way, that fresh file is
+what you import on the new machine, not this dated one.
 
 ### 1c. Configure `server/.env`
 
