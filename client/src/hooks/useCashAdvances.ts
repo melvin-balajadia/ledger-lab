@@ -15,7 +15,16 @@ export function useCreateCashAdvance() {
 export function useUpdateCashAdvance() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: Partial<CashAdvanceLineInput> & { id: number; liquidated_amount?: string; status?: string; needs_review?: 0 | 1 }) =>
+    mutationFn: ({
+      id,
+      ...body
+    }: Partial<CashAdvanceLineInput> & {
+      id: number;
+      liquidated_amount?: string;
+      status?: string;
+      liquidation_control_no?: string;
+      needs_review?: 0 | 1;
+    }) =>
       patchJson(`/api/projects/${PROJECT_ID}/cash-advances/${id}`, body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cash-advances', PROJECT_ID] }),
   });

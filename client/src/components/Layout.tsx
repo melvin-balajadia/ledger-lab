@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthMe, useLogout } from "../hooks/useAuth";
+import { clearAllTableStates } from "../hooks/useTableUrlState";
 import { BackupButton } from "./BackupButton";
 import {
   IconAlertCircle,
@@ -18,6 +19,16 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
       : "text-ink-muted hover:text-ink"
   }`;
 
+function generatedAt() {
+  return new Date().toLocaleString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   return (
@@ -32,6 +43,7 @@ export function Layout() {
 
   async function handleLogout() {
     await logout.mutateAsync();
+    clearAllTableStates();
     navigate("/login", { replace: true });
   }
 
@@ -45,12 +57,26 @@ export function Layout() {
             <span className="text-xs font-semibold tracking-wide text-accent uppercase">
               Royale Cold Storage — Plaridel Extension
             </span>
-            <h1 className="font-display text-2xl font-semibold text-balance text-ink sm:text-3xl">
+            <h1 className="font-display text-2xl font-semibold text-balance text-ink sm:text-3xl print:hidden">
               LedgerLab - Cost Management System
             </h1>
+            {/* Print only. The app's own product name isn't meaningful to
+                whoever this report goes to -- they're reading about the
+                project, not the software used to produce it. */}
+            <h1 className="hidden font-display text-2xl font-semibold text-balance text-ink sm:text-3xl print:block">
+              Cost Overview Report
+            </h1>
+            {/* Print only. These figures move, so a printout going up the
+                approval chain has to say when it was taken and by whom --
+                otherwise two copies are indistinguishable. */}
+            {user && (
+              <p className="hidden text-xs text-ink-muted print:block">
+                Generated {generatedAt()} by {displayName}
+              </p>
+            )}
           </div>
           {user && (
-            <div className="flex items-center gap-3">
+            <div className="no-print flex items-center gap-3">
               <BackupButton />
               <div className="flex items-center gap-2.5 rounded-full border border-rule py-1 pr-3 pl-1 bg-surface">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">

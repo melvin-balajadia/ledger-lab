@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Modal } from "./Modal";
+import { buildCsv, downloadCsv } from "../lib/exportCsv";
 import {
   IconPenLine,
   IconTrash,
@@ -125,32 +126,27 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// NOTE: exportToCSV intentionally uses raw values (not col.render output)
-// because rendered values may contain JSX elements, icons, or badges that
-// would produce unreadable text in a CSV file.
+// Raw values, not col.render output -- rendered values may contain JSX
+// elements, icons, or badges that stringify to unreadable text in a CSV.
+// Quoting/escaping/BOM handling lives in lib/exportCsv so the hand-rolled
+// tables that aren't DataTables share one implementation.
 function exportToCSV<T extends Record<string, unknown>>(
   rows: T[],
   columns: ColumnDef<T>[],
   filename: string,
 ) {
   const visibleCols = columns.filter((c) => !c.hidden);
-  const header = visibleCols.map((c) => `"${c.label}"`).join(",");
-  const csvRows = rows.map((row) =>
-    visibleCols
-      .map((c) => {
-        const val = get(row, c.key as string);
-        return `"${String(val ?? "").replace(/"/g, '""')}"`;
-      })
-      .join(","),
+  const csv = buildCsv(
+    rows,
+    visibleCols.map((c) => ({
+      key: c.key as string,
+      label: c.label,
+      // Nested keys ("a.b") are supported on screen via get(), so the export
+      // has to resolve them the same way rather than a flat property read.
+      csvValue: (row: T) => get(row, c.key as string) as string | number | null | undefined,
+    })),
   );
-  const csv = [header, ...csvRows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${filename}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCsv(csv, filename);
 }
 
 // FIX #3: stable skeleton widths — avoids hydration mismatches in Next.js
@@ -642,10 +638,16 @@ export function DataTable<T extends { [key: string]: unknown }>({
   const [exportError, setExportError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
-  // Tracks whether this is the initial mount. The page-reset effect must not
-  // fire on mount because initialState may have already seeded page > 1 from
-  // the URL — resetting it would discard the restored state immediately.
-  const isMountedRef = useRef(false);
+  // Snapshot of the mount-time values, captured once (useRef's initializer
+  // argument is only evaluated on the first render). The page-reset effect
+  // below compares against this instead of toggling a boolean flag inside
+  // the effect body -- a flag mutated in the effect doesn't survive React 18
+  // StrictMode's dev-only double-invoke of effects (mount -> effect ->
+  // cleanup -> effect again): the first invocation would flip it, so the
+  // synthetic second invocation sees it already "not mounted" and fires the
+  // reset for real, discarding a page > 1 seeded from initialState within
+  // the same tick it was restored.
+  const mountSnapshotRef = useRef({ debouncedSearch, filters, perPage });
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const colPickerBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -694,8 +696,12 @@ export function DataTable<T extends { [key: string]: unknown }>({
   // Reset to page 1 when the user actively changes search/filters/perPage,
   // but NOT on the initial mount — that would discard the URL-restored page.
   useEffect(() => {
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
+    const baseline = mountSnapshotRef.current;
+    if (
+      debouncedSearch === baseline.debouncedSearch &&
+      filters === baseline.filters &&
+      perPage === baseline.perPage
+    ) {
       return;
     }
     setPage(1);

@@ -36,7 +36,10 @@ export function Modal({
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center sm:p-6">
+    // no-print: a dialog open at print time would otherwise paper over the
+    // whole first page. Overview closes its print dialog before handing off to
+    // window.print(); this covers any other modal and any timing slip.
+    <div className="no-print fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center sm:p-6">
       {/* The card's own height is capped to the viewport (minus the backdrop
           padding) and split into a fixed header + a scrolling body -- before
           this, a tall modal (e.g. a PO with many milestones) grew past the

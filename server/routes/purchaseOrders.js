@@ -6,6 +6,7 @@ const pool = require('../db');
 const { recordAudit } = require('../lib/audit');
 const { upload, poUploadDir } = require('../lib/poAttachmentStorage');
 const { toDecimalOrNull, isPositiveAmount } = require('../lib/money');
+const { resolvePlanningLineIdsWithDescendants } = require('../lib/planningLines');
 
 const router = express.Router();
 
@@ -179,6 +180,15 @@ router.get('/:id/purchase-orders', async (req, res, next) => {
       where.push('po.budget_item_id = ?');
       params.push(req.query.budget_item_id);
     }
+    if (req.query.planning_line_id) {
+      // Includes descendant JPL codes -- selecting "3.0" should also match
+      // rows tagged "3.1", "3.8.4", etc., not just an exact "3.0" tag.
+      const planningLineIds = await resolvePlanningLineIdsWithDescendants(
+        pool, req.params.id, req.query.planning_line_id
+      );
+      where.push('po.planning_line_id IN (?)');
+      params.push(planningLineIds);
+    }
     if (req.query.status) {
       where.push('v.status = ?');
       params.push(req.query.status);
@@ -213,15 +223,53 @@ router.get('/:id/purchase-orders', async (req, res, next) => {
     // entered. Explicit column sort (incl. by PO date) still works via sortKey.
     const orderSql = sortCol ? `${sortCol} ${sortDir}, v.id DESC` : 'v.id DESC';
 
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM v_po_balance v JOIN purchase_orders po ON po.id = v.id WHERE ${whereSql}`,
+    // One aggregate query covers both the pagination total and the summary
+    // tiles above the table -- same WHERE as the list itself, so the numbers
+    // always match what's currently filtered/visible. Retention held is
+    // deliberately not part of this -- CLAUDE.md is explicit that it must
+    // never be blended into a contract/paid/balance total; the page pulls it
+    // separately from the existing /retention endpoint.
+    const [[summaryRow]] = await pool.query(
+      `SELECT COUNT(*) AS row_count,
+              COALESCE(SUM(v.contract_amount_php), 0) AS total_contract,
+              COALESCE(SUM(v.paid_php), 0) AS total_paid,
+              COALESCE(SUM(v.balance_php), 0) AS total_balance,
+              SUM(CASE WHEN v.balance_php > 0 THEN 1 ELSE 0 END) AS outstanding_count
+       FROM v_po_balance v JOIN purchase_orders po ON po.id = v.id WHERE ${whereSql}`,
       params
     );
+    const total = summaryRow.row_count;
+    // Grouped by contract amount (the commitment figure), not paid/balance --
+    // "how much has been awarded per JPL code" is the planning question this
+    // answers. budget_item_id resolves to a real label (item_no +
+    // description); planning_line descriptions are all blank in the source
+    // (CLAUDE.md), so JPL codes are grouped underneath by their raw code only.
+    const [byBudgetItem] = await pool.query(
+      `SELECT po.budget_item_id, bi.item_no AS budget_item_no, bi.description AS budget_item_description,
+              po.planning_line_id, pl.code AS planning_line_code,
+              COALESCE(SUM(v.contract_amount_php), 0) AS total
+       FROM v_po_balance v
+       JOIN purchase_orders po ON po.id = v.id
+       LEFT JOIN budget_items bi ON bi.id = po.budget_item_id
+       LEFT JOIN planning_lines pl ON pl.id = po.planning_line_id
+       WHERE ${whereSql}
+       GROUP BY po.budget_item_id, bi.item_no, bi.description, po.planning_line_id, pl.code
+       ORDER BY total DESC`,
+      params
+    );
+    const summary = {
+      row_count: summaryRow.row_count,
+      total_contract: summaryRow.total_contract,
+      total_paid: summaryRow.total_paid,
+      total_balance: summaryRow.total_balance,
+      outstanding_count: Number(summaryRow.outstanding_count),
+      by_budget_item: byBudgetItem,
+    };
     const [rows] = await pool.query(
       `${BASE_SELECT} WHERE ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     );
-    res.json({ rows, page, pageSize, total });
+    res.json({ rows, page, pageSize, total, summary });
   } catch (err) {
     next(err);
   }

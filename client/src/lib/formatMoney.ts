@@ -7,6 +7,17 @@ export function formatMoney(value: string): string {
   return peso.format(Number(value));
 }
 
+// Accounting style, "(₱4.92)" instead of "-₱4.92" -- display only, scoped to
+// the Budget vs. actual table rather than a global formatMoney() change,
+// since several other screens concatenate formatMoney() output with their
+// own literal parens for currency conversions (e.g. PurchaseOrderDetail's
+// "$1,000.00 (₱58,599.00)"), which would double up if this became the
+// default everywhere.
+export function formatMoneyAccounting(value: string): string {
+  const n = Number(value);
+  return n < 0 ? `(${peso.format(-n)})` : peso.format(n);
+}
+
 // For a PO/payment's native (pre-conversion) amount, e.g. the USD figure
 // on a foreign-currency contract -- formatMoney is PHP-only.
 export function formatCurrency(value: string, currency: string): string {

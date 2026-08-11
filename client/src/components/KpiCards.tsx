@@ -1,38 +1,46 @@
-import { useEffect, useRef } from 'react';
-import { Chart, registerables } from 'chart.js';
 import Decimal from 'decimal.js';
+import { Line, LineChart } from 'recharts';
 import { formatMoney, formatPercent } from '../lib/formatMoney';
 import { computeDeltaPct } from '../lib/deltas';
 import { useCostTrend } from '../hooks/useDashboardAnalytics';
 import { IconTrendDown, IconTrendUp } from './icons';
 import type { ProjectKpis } from '../types';
 
-Chart.register(...registerables);
+// Stat-tile trend spec (dataviz skill): the line itself is the de-emphasis
+// hue -- it's context, not a second thing to decode -- with only the
+// current period picked out, in the accent. Colors are literal `var(--x)`
+// strings, not a getComputedStyle() snapshot (see CostTrendChart's header
+// comment) so they re-resolve live under print/theme change.
+function Sparkline({ points }: { points: number[] }) {
+  if (points.length === 0) return null;
+  const data = points.map((value, i) => ({ i, value }));
 
-function Sparkline({ points, color }: { color: string; points: number[] }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
-
-  useEffect(() => {
-    if (!canvasRef.current || points.length === 0) return;
-    chartRef.current?.destroy();
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'line',
-      data: {
-        labels: points.map((_, i) => i),
-        datasets: [{ data: points, borderColor: color, borderWidth: 2, pointRadius: 0, tension: 0.35 }],
-      },
-      options: {
-        responsive: false,
-        animation: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: { x: { display: false }, y: { display: false } },
-      },
-    });
-    return () => chartRef.current?.destroy();
-  }, [points, color]);
-
-  return <canvas ref={canvasRef} width={64} height={24} />;
+  return (
+    <LineChart width={64} height={24} data={data}>
+      <Line
+        dataKey="value"
+        stroke="var(--color-rule-strong)"
+        strokeWidth={2}
+        dot={(props: { cx?: number; cy?: number; index?: number }) => {
+          const isLast = props.index === data.length - 1;
+          // Recharts requires a rendered element per point even when hidden;
+          // cx/cy are only absent before the chart has laid out (never in
+          // practice here, since dot only renders post-layout).
+          return (
+            <circle
+              key={props.index}
+              cx={props.cx ?? 0}
+              cy={props.cy ?? 0}
+              r={isLast ? 2.5 : 0}
+              fill={isLast ? 'var(--color-accent)' : 'none'}
+              stroke="none"
+            />
+          );
+        }}
+        isAnimationActive={false}
+      />
+    </LineChart>
+  );
 }
 
 function DeltaTag({ direction, pct }: { direction: 'down' | 'flat' | 'up'; pct: string }) {
@@ -64,21 +72,23 @@ export function KpiCards({ kpis }: { kpis: ProjectKpis }) {
   const disbursedPoints = months.map((m) => Number(m.total));
 
   return (
-    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
+    // print:grid-cols-3 -- 5 cards in a 2-col grid orphans the 5th alone on
+    // its own row; 3+2 is a normal-looking remainder, not a visible gap.
+    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5 print:grid-cols-3">
       <Card label="Budget" value={formatMoney(kpis.total_budget)} note="Total approved" />
       <Card
         label="Committed"
         value={formatMoney(kpis.total_committed)}
         note={`${formatPercent(kpis.committed_pct ? String(Number(kpis.committed_pct) / 100) : null)} of budget`}
         delta={committedDelta}
-        sparkline={committedPoints.length > 1 ? <Sparkline points={committedPoints} color="#5B8DEF" /> : undefined}
+        sparkline={committedPoints.length > 1 ? <Sparkline points={committedPoints} /> : undefined}
       />
       <Card
         label="Paid (check issued)"
         value={formatMoney(kpis.total_disbursed)}
         note="Cash actually paid out"
         delta={disbursedDelta}
-        sparkline={disbursedPoints.length > 1 ? <Sparkline points={disbursedPoints} color="#0F6B5C" /> : undefined}
+        sparkline={disbursedPoints.length > 1 ? <Sparkline points={disbursedPoints} /> : undefined}
       />
       <Card label="Remaining vs. contract" value={formatMoney(kpis.remaining_vs_contract)} note="How much can still be awarded" />
       <Card label="Remaining vs. disbursed" value={formatMoney(kpis.remaining_vs_disbursed)} note="How much cash is left" />
@@ -111,11 +121,17 @@ function Card({
       <span className="mb-2 block truncate font-mono text-lg leading-tight font-semibold tracking-tight text-ink" title={value}>
         {value}
       </span>
-      <div className="flex items-center justify-between gap-2">
+      {/* Only 2 of 5 cards have a delta/sparkline (no prior-month baseline
+          for Budget or either Remaining card) -- fine on screen, but reads
+          as broken/inconsistent on a printed page shown side by side with
+          cards that plainly have nothing there. Print always shows the
+          plain note instead, uniformly across all 5 cards. */}
+      <div className="flex items-center justify-between gap-2 no-print">
         {delta ? <DeltaTag direction={delta.direction} pct={delta.pct} /> : <span className="text-[13px] text-ink-faint">{note}</span>}
         {sparkline}
       </div>
-      {delta && <p className="mt-1 text-[11px] text-ink-faint">{note}</p>}
+      {delta && <p className="mt-1 text-[11px] text-ink-faint no-print">{note}</p>}
+      <p className="hidden text-[13px] text-ink-faint print:block">{note}</p>
     </div>
   );
 }

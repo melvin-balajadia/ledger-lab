@@ -290,6 +290,10 @@ CREATE TABLE cash_advances (
   -- Free-text reference she assigns herself (the number on the physical
   -- voucher slip) -- not document_no, which is the internal split-JPL key.
   control_no        VARCHAR(64) NULL,
+  -- Reference tying a 'liquidated'/'partially_liquidated' status back to the
+  -- liquidation transaction that settled it -- distinct from control_no,
+  -- which is the reference on the ORIGINAL advance request.
+  liquidation_control_no VARCHAR(64) NULL,
   needs_review      TINYINT(1) NOT NULL DEFAULT 0,
   created_by        VARCHAR(64)  NULL,
   updated_by        VARCHAR(64)  NULL,

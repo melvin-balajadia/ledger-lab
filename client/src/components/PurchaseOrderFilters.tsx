@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { SupplierAutocomplete } from './SupplierAutocomplete';
+import { PlanningLinePicker } from './PlanningLinePicker';
 import { useProjectSummary } from '../hooks/useProjectData';
 import { IconCalendar, IconFilter, IconList, IconUser } from './icons';
-import type { PoStatus, Supplier } from '../types';
+import type { PlanningLine, PoStatus, Supplier } from '../types';
 
 export interface PurchaseOrderFilterValues {
   date_from: string;
   date_to: string;
   supplier_id?: number;
   budget_item_id?: number;
+  planning_line_id?: number;
   status?: PoStatus;
 }
 
@@ -29,6 +31,7 @@ export function PurchaseOrderFilters({ onChange }: { onChange: (filters: Purchas
   const [dateTo, setDateTo] = useState('');
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [budgetItemId, setBudgetItemId] = useState('');
+  const [planningLine, setPlanningLine] = useState<PlanningLine | null>(null);
   const [status, setStatus] = useState<PoStatus | ''>('');
 
   function emit(overrides: Partial<PurchaseOrderFilterValues> = {}) {
@@ -37,6 +40,7 @@ export function PurchaseOrderFilters({ onChange }: { onChange: (filters: Purchas
       date_to: dateTo,
       supplier_id: supplier?.id,
       budget_item_id: budgetItemId ? Number(budgetItemId) : undefined,
+      planning_line_id: planningLine?.id,
       status: status || undefined,
       ...overrides,
     });
@@ -96,6 +100,18 @@ export function PurchaseOrderFilters({ onChange }: { onChange: (filters: Purchas
             </option>
           ))}
         </select>
+      </div>
+      <div className="relative min-w-55 flex-1">
+        <IconList className="pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2 text-ink-faint" />
+        <PlanningLinePicker
+          hasIcon
+          filterMode
+          value={planningLine?.id ?? null}
+          onChange={(pl) => {
+            setPlanningLine(pl);
+            emit({ planning_line_id: pl?.id });
+          }}
+        />
       </div>
       <div className="relative">
         <IconFilter className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-faint" />

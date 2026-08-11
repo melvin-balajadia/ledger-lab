@@ -77,7 +77,7 @@ export function WorkerPayrollDetail() {
             rowKey="id"
             exportable
             title="Payroll history"
-            perPageOptions={[25, 50, 100]}
+            perPageOptions={[10, 25, 50, 100]}
             searchPlaceholder="Search week or JPL code…"
             emptyMessage="No payroll entries recorded for this worker."
           />

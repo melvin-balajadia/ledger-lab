@@ -1,5 +1,21 @@
 import { formatMoney, formatPercent } from '../lib/formatMoney';
-import type { RetentionSummary } from '../types';
+import { type CsvColumn } from '../lib/exportCsv';
+import { ExportButton } from './ExportButton';
+import { Panel } from './Panel';
+import type { RetentionPo, RetentionSummary } from '../types';
+
+// Raw values, so the spreadsheet gets summable numbers rather than formatted
+// text. The three header totals are deliberately left out -- they are just
+// column sums, and mixing them into the same file would break the single-table
+// shape that makes a CSV useful.
+const CSV_COLUMNS: CsvColumn<RetentionPo>[] = [
+  { key: 'por_no', label: 'PO No.' },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'retention_pct', label: 'Retention rate' },
+  { key: 'retention_amount', label: 'Held' },
+  { key: 'retention_released', label: 'Released' },
+  { key: 'retention_outstanding', label: 'Outstanding' },
+];
 
 // Retention held is not a payable -- CLAUDE.md is explicit that it must
 // never be folded into an outstanding balance. This used to be a single
@@ -7,14 +23,11 @@ import type { RetentionSummary } from '../types';
 // breakdown, using the same v_po_retention data that sentence summarized.
 export function RetentionPanel({ data }: { data: RetentionSummary }) {
   return (
-    <div className="rounded-md border border-rule bg-surface p-5 shadow-card">
-      <div className="mb-4">
-        <p className="text-sm font-semibold text-ink">Retention held</p>
-        <p className="text-xs text-ink-faint">
-          Not a payable — held until the milestone is reached, never counted in an outstanding balance
-        </p>
-      </div>
-
+    <Panel
+      title="Retention held"
+      subtitle="Not a payable — held until the milestone is reached, never counted in an outstanding balance"
+      action={<ExportButton rows={data.pos} columns={CSV_COLUMNS} filename="retention-held" />}
+    >
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Held" value={formatMoney(data.total_held)} />
         <Stat label="Released" value={formatMoney(data.total_released)} />
@@ -51,7 +64,7 @@ export function RetentionPanel({ data }: { data: RetentionSummary }) {
           </table>
         </div>
       )}
-    </div>
+    </Panel>
   );
 }
 

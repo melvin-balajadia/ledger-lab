@@ -152,18 +152,37 @@ router.get('/:id/payroll-periods', async (req, res, next) => {
 
     const sortCol = SORT_COLUMNS[req.query.sortKey];
     const sortDir = req.query.sortDir === 'desc' ? 'DESC' : 'ASC';
-    const orderSql = sortCol ? `${sortCol} ${sortDir}` : 'period_start ASC';
+    // Default is latest week first -- the current/most recent period is
+    // what she checks most often, and with a 10-row default page size it
+    // would otherwise be buried further away with every week that passes.
+    const orderSql = sortCol ? `${sortCol} ${sortDir}` : 'period_start DESC';
 
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM (${derived}) t WHERE ${whereSql}`,
+    // One aggregate query covers both the pagination total and the summary
+    // tiles above the table -- same WHERE as the list itself, so the
+    // numbers always match what's currently filtered/visible.
+    const [[summaryRow]] = await pool.query(
+      `SELECT COUNT(*) AS row_count,
+              COALESCE(SUM(control_total), 0) AS total_control,
+              COALESCE(SUM(extracted_total), 0) AS total_extracted,
+              COALESCE(SUM(delta), 0) AS total_delta,
+              SUM(CASE WHEN reconciliation_status != 'ok' THEN 1 ELSE 0 END) AS attention_count
+       FROM (${derived}) t WHERE ${whereSql}`,
       [projectId, ...params]
     );
+    const total = summaryRow.row_count;
+    const summary = {
+      row_count: summaryRow.row_count,
+      total_control: summaryRow.total_control,
+      total_extracted: summaryRow.total_extracted,
+      total_delta: summaryRow.total_delta,
+      attention_count: Number(summaryRow.attention_count),
+    };
     const [rows] = await pool.query(
       `SELECT * FROM (${derived}) t WHERE ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`,
       [projectId, ...params, pageSize, (page - 1) * pageSize]
     );
 
-    res.json({ rows, page, pageSize, total });
+    res.json({ rows, page, pageSize, total, summary });
   } catch (err) {
     next(err);
   }

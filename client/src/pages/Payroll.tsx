@@ -4,6 +4,7 @@ import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
 import { PROJECT_ID } from '../hooks/useProjectData';
+import { useTableUrlState } from '../hooks/useTableUrlState';
 import { PayrollPeriodFilters, type PayrollPeriodFilterValues } from '../components/PayrollPeriodFilters';
 import { WorkerFilters, type WorkerFilterValues } from '../components/WorkerFilters';
 import { WorkerForm } from '../components/WorkerForm';
@@ -11,6 +12,7 @@ import { PayrollPeriodForm } from '../components/PayrollPeriodForm';
 import { DataTable, type ColumnDef, type FetchParams } from '../components/DataTable';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { StatusPill } from '../components/StatusPill';
+import { SummaryStats } from '../components/SummaryStats';
 import { ReconciliationBadge } from '../components/ReconciliationBadge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -18,9 +20,11 @@ import type { Tone } from '../lib/tones';
 import type {
   PayrollPeriod,
   PayrollPeriodListResponse,
+  PayrollPeriodSummary,
   PayrollWorkflowStatus,
   Worker,
   WorkerListResponse,
+  WorkerSummary,
 } from '../types';
 
 const WORKFLOW_LABEL: Record<PayrollWorkflowStatus, string> = {
@@ -112,9 +116,26 @@ export function Payroll() {
   const [workerModal, setWorkerModal] = useState<'create' | Worker | null>(null);
   const [workerRefreshKey, setWorkerRefreshKey] = useState(0);
   const [showNewPeriod, setShowNewPeriod] = useState(false);
+  const [periodSummary, setPeriodSummary] = useState<PayrollPeriodSummary | null>(null);
+  const [workerSummary, setWorkerSummary] = useState<WorkerSummary | null>(null);
+  // Distinct prefixes -- "By Week" and "By Worker" are two separate
+  // DataTables sharing this one route, so their page/sort/search state
+  // (and the sessionStorage/URL keys the hook stores it under) must not collide.
+  const { syncToUrl: syncPeriodsToUrl, buildFetchParams: buildPeriodsFetchParams } = useTableUrlState({
+    prefix: 'payp',
+    filterKeys: [],
+    defaultPerPage: 10,
+  });
+  const { syncToUrl: syncWorkersToUrl, buildFetchParams: buildWorkersFetchParams } = useTableUrlState({
+    prefix: 'payw',
+    filterKeys: [],
+    defaultPerPage: 10,
+  });
 
   const fetchPeriods = useCallback(
-    async ({ page, perPage, search, sortKey, sortDir, signal }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncPeriodsToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('pageSize', String(perPage));
@@ -136,13 +157,16 @@ export function Payroll() {
         `/api/projects/${PROJECT_ID}/payroll-periods?${params}`,
         { signal },
       );
+      setPeriodSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [periodFilters, attentionOnly],
+    [periodFilters, attentionOnly, syncPeriodsToUrl],
   );
 
   const fetchWorkers = useCallback(
-    async ({ page, perPage, search, sortKey, sortDir, signal }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncWorkersToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('pageSize', String(perPage));
@@ -155,9 +179,10 @@ export function Payroll() {
       if (activeFilter !== 'all') params.set('is_active', activeFilter === 'active' ? '1' : '0');
 
       const json = await fetchJson<WorkerListResponse>(`/api/projects/${PROJECT_ID}/workers?${params}`, { signal });
+      setWorkerSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [workerFilters, activeFilter],
+    [workerFilters, activeFilter, syncWorkersToUrl],
   );
 
   function handleWorkerModalClose() {
@@ -201,6 +226,21 @@ export function Payroll() {
 
       {viewMode === 'periods' ? (
         <>
+          {periodSummary && (
+            <SummaryStats
+              stats={[
+                { label: 'Total weekly sheet', value: formatMoney(periodSummary.total_control) },
+                { label: 'Total worker list', value: formatMoney(periodSummary.total_extracted) },
+                { label: 'Total difference', value: formatMoney(periodSummary.total_delta) },
+                {
+                  label: 'Needs attention',
+                  value: periodSummary.attention_count.toLocaleString(),
+                  tone: periodSummary.attention_count > 0 ? 'warn' : undefined,
+                },
+              ]}
+            />
+          )}
+
           <SegmentedControl
             value={attentionOnly}
             onChange={setAttentionOnly}
@@ -218,13 +258,23 @@ export function Payroll() {
             onView={(row) => navigate(`/payroll/${row.id}`)}
             exportable
             title="Payroll periods"
-            perPageOptions={[25, 50, 100]}
+            perPageOptions={[10, 25, 50, 100]}
             searchPlaceholder="Search week label…"
             emptyMessage="No payroll periods match these filters."
+            initialState={buildPeriodsFetchParams()}
           />
         </>
       ) : (
         <>
+          {workerSummary && (
+            <SummaryStats
+              stats={[
+                { label: 'Total earned', value: formatMoney(workerSummary.total_earned) },
+                { label: 'Workers', value: workerSummary.row_count.toLocaleString() },
+              ]}
+            />
+          )}
+
           <SegmentedControl
             value={activeFilter}
             onChange={setActiveFilter}
@@ -244,10 +294,11 @@ export function Payroll() {
             onEdit={(row) => setWorkerModal(row)}
             exportable
             title="Workers"
-            perPageOptions={[25, 50, 100]}
+            perPageOptions={[10, 25, 50, 100]}
             searchPlaceholder="Search worker name…"
             emptyMessage="No workers match these filters."
             refreshKey={workerRefreshKey}
+            initialState={buildWorkersFetchParams()}
           />
         </>
       )}

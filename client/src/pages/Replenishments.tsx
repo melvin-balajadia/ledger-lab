@@ -1,18 +1,22 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
+import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
 import { PROJECT_ID } from '../hooks/useProjectData';
 import { useRestoreReplenishment, useVoidedReplenishments } from '../hooks/useReplenishments';
+import { useTableUrlState } from '../hooks/useTableUrlState';
 import { ReplenishmentFilters, type FilterValues } from '../components/ReplenishmentFilters';
 import { ReplenishmentForm } from '../components/ReplenishmentForm';
 import { DataTable, type ColumnDef, type FetchParams } from '../components/DataTable';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { StatusPill } from '../components/StatusPill';
+import { SummaryStats } from '../components/SummaryStats';
+import { BudgetItemBreakdown } from '../components/BudgetItemBreakdown';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
-import type { Replenishment, ReplenishmentListResponse } from '../types';
+import type { Replenishment, ReplenishmentListResponse, ReplenishmentSummary } from '../types';
 
 const columns: ColumnDef<Replenishment>[] = [
   { key: 'txn_date', label: 'Date', sortable: true },
@@ -57,11 +61,15 @@ export function Replenishments() {
   const [modal, setModal] = useState<'create' | Replenishment | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [summary, setSummary] = useState<ReplenishmentSummary | null>(null);
   const voidedQuery = useVoidedReplenishments(showDeleted);
   const restoreMutation = useRestoreReplenishment();
+  const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'repl', filterKeys: [], defaultPerPage: 10 });
 
   const fetchData = useCallback(
-    async ({ page, perPage, search, sortKey, sortDir, signal }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('pageSize', String(perPage));
@@ -81,15 +89,32 @@ export function Replenishments() {
         `/api/projects/${PROJECT_ID}/replenishments?${params}`,
         { signal },
       );
+      setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly],
+    [filters, needsReviewOnly, syncToUrl],
   );
 
   function handleModalClose() {
     setModal(null);
     setRefreshKey((k) => k + 1);
   }
+
+  const budgetItemGroups = useMemo(
+    () =>
+      groupByBudgetItem(
+        (summary?.by_budget_item ?? []).map((r) => {
+          const { key, label } = budgetItemKeyAndLabel(r.budget_item_id, r.budget_item_no, r.budget_item_description);
+          return {
+            budgetItemKey: key,
+            budgetItemLabel: label,
+            codeLabel: r.planning_line_code ?? 'No JPL code',
+            amount: r.total,
+          };
+        }),
+      ),
+    [summary],
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -109,6 +134,22 @@ export function Replenishments() {
         </div>
       </div>
 
+      {summary && (
+        <SummaryStats
+          stats={[
+            { label: 'Total (filtered)', value: formatMoney(summary.total_amount) },
+            { label: 'Entries', value: summary.row_count.toLocaleString() },
+            {
+              label: 'Needs review',
+              value: summary.needs_review_count.toLocaleString(),
+              tone: summary.needs_review_count > 0 ? 'warn' : undefined,
+            },
+          ]}
+        />
+      )}
+
+      <BudgetItemBreakdown groups={budgetItemGroups} />
+
       <SegmentedControl
         value={needsReviewOnly}
         onChange={setNeedsReviewOnly}
@@ -127,10 +168,11 @@ export function Replenishments() {
         onView={(row) => setModal(row)}
         exportable
         title="Replenishments"
-        perPageOptions={[50, 100, 200]}
+        perPageOptions={[10, 50, 100, 200]}
         searchPlaceholder="Search description or ref no…"
         emptyMessage="No replenishments match these filters."
         refreshKey={refreshKey}
+        initialState={buildFetchParams()}
       />
 
       {modal && (

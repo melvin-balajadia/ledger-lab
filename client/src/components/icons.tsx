@@ -253,6 +253,16 @@ export function IconEye({ className }: IconProps) {
   );
 }
 
+export function IconPrinter({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M6 9V2h12v7" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <path d="M6 14h12v8H6z" />
+    </svg>
+  );
+}
+
 export function IconEyeOff({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

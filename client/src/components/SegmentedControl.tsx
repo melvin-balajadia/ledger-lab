@@ -8,7 +8,9 @@ export function SegmentedControl<T extends string>({
   value: T;
 }) {
   return (
-    <div className="inline-flex gap-0.5 self-start rounded-full border border-rule bg-surface-2 p-0.75">
+    // no-print: the buttons themselves are hidden when printing, but this
+    // bordered wrapper would otherwise print as an empty pill.
+    <div className="no-print inline-flex gap-0.5 self-start rounded-full border border-rule bg-surface-2 p-0.75">
       {options.map((opt) => (
         <button
           key={opt.value}

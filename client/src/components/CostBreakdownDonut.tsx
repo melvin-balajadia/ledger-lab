@@ -1,75 +1,78 @@
-import { useEffect, useRef } from 'react';
-import { Chart, registerables } from 'chart.js';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { COST_CATEGORIES } from '../lib/costCategories';
 import { formatMoney, sumMoney } from '../lib/formatMoney';
 import type { CostBreakdown } from '../types';
 
-Chart.register(...registerables);
+function DonutTooltip({ active, payload }: { active?: boolean; payload?: { name?: string; value?: number; payload?: { color: string } }[] }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0];
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-rule bg-surface px-3 py-2 text-xs shadow-card">
+      <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: row.payload?.color }} />
+      <span className="text-ink-muted">{row.name}</span>
+      <span className="font-mono font-semibold text-ink">₱{Number(row.value ?? 0).toLocaleString()}</span>
+    </div>
+  );
+}
 
-const CATEGORIES: { color: string; key: keyof CostBreakdown; label: string }[] = [
-  { key: 'payroll', label: 'Payroll', color: '#0F6B5C' },
-  { key: 'replenishments', label: 'Replenishments', color: '#5B8DEF' },
-  { key: 'po_payments', label: 'PO Payments', color: '#B08BE0' },
-  { key: 'cash_advances', label: 'Cash Advances', color: '#E0A458' },
-  { key: 'additional_payments', label: 'Additional Payments', color: '#E2725B' },
-];
-
+// Part-to-whole at a glance, 5 segments -- a donut is the wrong tool for
+// comparing two CLOSE values, but that isn't this chart's job: PO Payments
+// dominates at ~86%, so the read is "one thing owns this budget," which a
+// donut communicates in one look.
 export function CostBreakdownDonut({ data }: { data: CostBreakdown }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
-  const total = sumMoney(CATEGORIES.map((c) => data[c.key]));
+  const total = sumMoney(COST_CATEGORIES.map((c) => data[c.key]));
+  const totalNum = Number(total);
 
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const surface = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim();
-
-    chartRef.current?.destroy();
-    chartRef.current = new Chart(canvasRef.current, {
-      type: 'doughnut',
-      data: {
-        labels: CATEGORIES.map((c) => c.label),
-        datasets: [
-          {
-            data: CATEGORIES.map((c) => Number(data[c.key])),
-            backgroundColor: CATEGORIES.map((c) => c.color),
-            borderColor: surface || '#FFFFFF',
-            borderWidth: 3,
-            hoverOffset: 6,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '68%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ₱${Number(ctx.parsed).toLocaleString()}` } },
-        },
-      },
-    });
-
-    return () => chartRef.current?.destroy();
-  }, [data]);
+  const chartData = COST_CATEGORIES.map((c) => ({
+    key: c.key,
+    name: c.label,
+    value: Number(data[c.key]),
+    color: c.color,
+    pct: totalNum > 0 ? ((Number(data[c.key]) / totalNum) * 100).toFixed(0) : '0',
+  }));
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative h-50 w-full">
-        <canvas ref={canvasRef} />
-        <div className="pointer-events-none absolute top-[44%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+      <div className="relative h-52 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius="68%"
+              outerRadius="98%"
+              // 2px surface-color ring between segments -- the spacer the
+              // dataviz skill uses instead of a border to separate marks.
+              // Literal var() string, not a getComputedStyle() snapshot, so
+              // it re-resolves live under print/theme change (see
+              // CostTrendChart's header comment for why that distinction matters).
+              stroke="var(--color-surface)"
+              strokeWidth={3}
+              startAngle={90}
+              endAngle={-270}
+            >
+              {chartData.map((entry) => (
+                <Cell key={entry.key} fill={entry.color} />
+              ))}
+            </Pie>
+            <Tooltip content={<DonutTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="font-mono text-lg font-semibold text-ink">{formatMoney(total)}</div>
           <div className="text-[11px] text-ink-faint">total cost</div>
         </div>
       </div>
+      {/* Direct labels + legend together: identity never rides on color
+          alone, and the %s answer the chart's own question without a hover. */}
       <div className="mt-3.5 flex flex-wrap justify-center gap-3">
-        {CATEGORIES.map((c) => {
-          const pct = Number(total) > 0 ? ((Number(data[c.key]) / Number(total)) * 100).toFixed(0) : '0';
-          return (
-            <span key={c.key} className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
-              <span className="inline-block h-2 w-2 rounded-sm" style={{ background: c.color }} />
-              {c.label} · {pct}%
-            </span>
-          );
-        })}
+        {chartData.map((c) => (
+          <span key={c.key} className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: c.color }} />
+            {c.name} · {c.pct}%
+          </span>
+        ))}
       </div>
     </div>
   );

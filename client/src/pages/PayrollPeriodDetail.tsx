@@ -211,7 +211,7 @@ export function PayrollPeriodDetail() {
             onSelectionChange={setSelectedEntries}
             exportable
             title="Worker entries"
-            perPageOptions={[25, 50, 100]}
+            perPageOptions={[10, 25, 50, 100]}
             searchPlaceholder="Search worker or position…"
             emptyMessage="No entries recorded for this week."
           />

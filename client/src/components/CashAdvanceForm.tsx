@@ -28,6 +28,7 @@ export function CashAdvanceForm({
   const [requestedBy, setRequestedBy] = useState(cashAdvance?.requested_by ?? '');
   const [purpose, setPurpose] = useState(cashAdvance?.purpose ?? '');
   const [controlNo, setControlNo] = useState(cashAdvance?.control_no ?? '');
+  const [liquidationControlNo, setLiquidationControlNo] = useState(cashAdvance?.liquidation_control_no ?? '');
   const [liquidatedAmount, setLiquidatedAmount] = useState(cashAdvance?.liquidated_amount ?? '0');
   const [status, setStatus] = useState<CashAdvanceStatus>(cashAdvance?.status ?? 'open');
   const [needsReview, setNeedsReview] = useState(Boolean(cashAdvance?.needs_review));
@@ -74,6 +75,7 @@ export function CashAdvanceForm({
         requested_by: requestedBy,
         purpose,
         control_no: controlNo,
+        liquidation_control_no: liquidationControlNo,
         amount: codeLines[0].amount,
         liquidated_amount: liquidatedAmount,
         status,
@@ -230,6 +232,19 @@ export function CashAdvanceForm({
             </select>
           </Field>
         </div>
+      )}
+
+      {isEdit && (status === 'liquidated' || status === 'partially_liquidated') && (
+        <Field label="Liquidation control number">
+          <input
+            type="text"
+            required
+            value={liquidationControlNo}
+            onChange={(e) => setLiquidationControlNo(e.target.value)}
+            placeholder="Reference for this liquidation"
+            className="w-full rounded-sm border border-rule-strong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+          />
+        </Field>
       )}
 
       {isEdit && (

@@ -4,12 +4,14 @@ const Decimal = require('decimal.js');
 const pool = require('../db');
 const { recordAudit } = require('../lib/audit');
 const { toDecimalOrNull, isPositiveAmount } = require('../lib/money');
+const { resolvePlanningLineIdsWithDescendants } = require('../lib/planningLines');
 
 const router = express.Router();
 
 const PROJECT_DATE_MIN = '2025-01-01';
 const PROJECT_DATE_MAX = '2027-12-31';
 const STATUSES = ['open', 'partially_liquidated', 'liquidated'];
+const LIQUIDATION_REQUIRED_STATUSES = ['liquidated', 'partially_liquidated'];
 const MAX_PAGE_SIZE = 200;
 const SORT_COLUMNS = { txn_date: 'r.txn_date', amount: 'r.amount' };
 
@@ -25,6 +27,12 @@ function validateLine(line) {
   }
   if (line.status && !STATUSES.includes(line.status)) {
     errors.push(`status must be one of ${STATUSES.join(', ')}`);
+  }
+  if (
+    LIQUIDATION_REQUIRED_STATUSES.includes(line.status) &&
+    !String(line.liquidation_control_no ?? '').trim()
+  ) {
+    errors.push('liquidation_control_no is required when status is liquidated or partially liquidated');
   }
   return errors;
 }
@@ -82,8 +90,13 @@ router.get('/:id/cash-advances', async (req, res, next) => {
       params.push(req.query.status);
     }
     if (req.query.planning_line_id) {
-      where.push('r.planning_line_id = ?');
-      params.push(req.query.planning_line_id);
+      // Includes descendant JPL codes -- selecting "3.0" should also match
+      // rows tagged "3.1", "3.8.4", etc., not just an exact "3.0" tag.
+      const planningLineIds = await resolvePlanningLineIdsWithDescendants(
+        pool, projectId, req.query.planning_line_id
+      );
+      where.push('r.planning_line_id IN (?)');
+      params.push(planningLineIds);
     }
     if (req.query.date_from) {
       where.push('r.txn_date >= ?');
@@ -116,10 +129,42 @@ router.get('/:id/cash-advances', async (req, res, next) => {
     // it's entered. Explicit column sort (incl. by date) still works via sortKey.
     const orderSql = sortCol ? `${sortCol} ${sortDir}, r.id DESC` : 'r.id DESC';
 
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM cash_advances r WHERE ${whereSql}`,
+    // One aggregate query covers both the pagination total and the summary
+    // tiles above the table -- same WHERE as the list itself, so the numbers
+    // always match what's currently filtered/visible.
+    const [[summaryRow]] = await pool.query(
+      `SELECT COUNT(*) AS row_count,
+              COALESCE(SUM(r.amount), 0) AS total_amount,
+              COALESCE(SUM(r.liquidated_amount), 0) AS total_liquidated,
+              COALESCE(SUM(r.amount - r.liquidated_amount), 0) AS outstanding_amount,
+              SUM(CASE WHEN r.needs_review = 1 THEN 1 ELSE 0 END) AS needs_review_count
+       FROM cash_advances r WHERE ${whereSql}`,
       params
     );
+    const total = summaryRow.row_count;
+    // budget_item_id resolves to a real label (item_no + description);
+    // planning_line descriptions are all blank in the source (CLAUDE.md), so
+    // JPL codes are grouped underneath by their raw code only.
+    const [byBudgetItem] = await pool.query(
+      `SELECT r.budget_item_id, bi.item_no AS budget_item_no, bi.description AS budget_item_description,
+              r.planning_line_id, pl.code AS planning_line_code,
+              COALESCE(SUM(r.amount), 0) AS total
+       FROM cash_advances r
+       LEFT JOIN budget_items bi ON bi.id = r.budget_item_id
+       LEFT JOIN planning_lines pl ON pl.id = r.planning_line_id
+       WHERE ${whereSql}
+       GROUP BY r.budget_item_id, bi.item_no, bi.description, r.planning_line_id, pl.code
+       ORDER BY total DESC`,
+      params
+    );
+    const summary = {
+      row_count: summaryRow.row_count,
+      total_amount: summaryRow.total_amount,
+      total_liquidated: summaryRow.total_liquidated,
+      outstanding_amount: summaryRow.outstanding_amount,
+      needs_review_count: Number(summaryRow.needs_review_count),
+      by_budget_item: byBudgetItem,
+    };
     const [rows] = await pool.query(
       `SELECT r.*, pl.code AS planning_line_code, pl.description AS planning_line_description
        FROM cash_advances r
@@ -129,7 +174,7 @@ router.get('/:id/cash-advances', async (req, res, next) => {
        LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     );
-    res.json({ rows, page, pageSize, total });
+    res.json({ rows, page, pageSize, total, summary });
   } catch (err) {
     next(err);
   }
@@ -243,7 +288,8 @@ router.patch('/:id/cash-advances/:caId', async (req, res, next) => {
 
     const editable = [
       'txn_date', 'planning_line_id', 'budget_item_id', 'requested_by', 'purpose',
-      'amount', 'liquidated_amount', 'status', 'document_no', 'control_no', 'needs_review',
+      'amount', 'liquidated_amount', 'status', 'document_no', 'control_no',
+      'liquidation_control_no', 'needs_review',
     ];
     const merged = { ...before };
     for (const field of editable) {
@@ -277,13 +323,13 @@ router.patch('/:id/cash-advances/:caId', async (req, res, next) => {
     await conn.query(
       `UPDATE cash_advances SET
          txn_date = ?, planning_line_id = ?, budget_item_id = ?, requested_by = ?, purpose = ?,
-         amount = ?, liquidated_amount = ?, status = ?, document_no = ?, control_no = ?, needs_review = ?,
-         updated_by = ?
+         amount = ?, liquidated_amount = ?, status = ?, document_no = ?, control_no = ?,
+         liquidation_control_no = ?, needs_review = ?, updated_by = ?
        WHERE id = ?`,
       [
         merged.txn_date, merged.planning_line_id, merged.budget_item_id, merged.requested_by, merged.purpose,
         merged.amount, merged.liquidated_amount, merged.status, merged.document_no, merged.control_no,
-        merged.needs_review, appUser, req.params.caId,
+        merged.liquidation_control_no, merged.needs_review, appUser, req.params.caId,
       ]
     );
     await recordAudit(conn, {

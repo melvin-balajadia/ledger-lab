@@ -4,6 +4,7 @@ const Decimal = require('decimal.js');
 const pool = require('../db');
 const { recordAudit } = require('../lib/audit');
 const { toDecimalOrNull, isPositiveAmount } = require('../lib/money');
+const { resolvePlanningLineIdsWithDescendants } = require('../lib/planningLines');
 
 const router = express.Router();
 
@@ -87,8 +88,13 @@ router.get('/:id/additional-payments', async (req, res, next) => {
       params.push(req.query.supplier_id);
     }
     if (req.query.planning_line_id) {
-      where.push('r.planning_line_id = ?');
-      params.push(req.query.planning_line_id);
+      // Includes descendant JPL codes -- selecting "3.0" should also match
+      // rows tagged "3.1", "3.8.4", etc., not just an exact "3.0" tag.
+      const planningLineIds = await resolvePlanningLineIdsWithDescendants(
+        pool, projectId, req.query.planning_line_id
+      );
+      where.push('r.planning_line_id IN (?)');
+      params.push(planningLineIds);
     }
     if (req.query.date_from) {
       where.push('r.txn_date >= ?');
@@ -121,10 +127,47 @@ router.get('/:id/additional-payments', async (req, res, next) => {
     // it's entered. Explicit column sort (incl. by date) still works via sortKey.
     const orderSql = sortCol ? `${sortCol} ${sortDir}, r.id DESC` : 'r.id DESC';
 
-    const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM additional_payments r WHERE ${whereSql}`,
+    // One aggregate query covers both the pagination total and the summary
+    // tiles above the table -- same WHERE as the list itself, so the numbers
+    // always match what's currently filtered/visible.
+    const [[summaryRow]] = await pool.query(
+      `SELECT COUNT(*) AS row_count, COALESCE(SUM(r.amount_php), 0) AS total_amount,
+              SUM(CASE WHEN r.needs_review = 1 THEN 1 ELSE 0 END) AS needs_review_count
+       FROM additional_payments r WHERE ${whereSql}`,
       params
     );
+    // Landed-cost breakdown by expense type -- the whole reason this ledger
+    // is split out from disbursements rather than folded into replenishments.
+    const [byExpenseType] = await pool.query(
+      `SELECT r.expense_type, COALESCE(SUM(r.amount_php), 0) AS total
+       FROM additional_payments r WHERE ${whereSql}
+       GROUP BY r.expense_type
+       ORDER BY total DESC`,
+      params
+    );
+    // budget_item_id resolves to a real label (item_no + description);
+    // planning_line descriptions are all blank in the source (CLAUDE.md), so
+    // JPL codes are grouped underneath by their raw code only.
+    const [byBudgetItem] = await pool.query(
+      `SELECT r.budget_item_id, bi.item_no AS budget_item_no, bi.description AS budget_item_description,
+              r.planning_line_id, pl.code AS planning_line_code,
+              COALESCE(SUM(r.amount_php), 0) AS total
+       FROM additional_payments r
+       LEFT JOIN budget_items bi ON bi.id = r.budget_item_id
+       LEFT JOIN planning_lines pl ON pl.id = r.planning_line_id
+       WHERE ${whereSql}
+       GROUP BY r.budget_item_id, bi.item_no, bi.description, r.planning_line_id, pl.code
+       ORDER BY total DESC`,
+      params
+    );
+    const total = summaryRow.row_count;
+    const summary = {
+      row_count: summaryRow.row_count,
+      total_amount: summaryRow.total_amount,
+      needs_review_count: Number(summaryRow.needs_review_count),
+      by_expense_type: byExpenseType,
+      by_budget_item: byBudgetItem,
+    };
     const [rows] = await pool.query(
       `SELECT r.*, s.name AS supplier_name, pl.code AS planning_line_code, pl.description AS planning_line_description
        FROM additional_payments r
@@ -135,7 +178,7 @@ router.get('/:id/additional-payments', async (req, res, next) => {
        LIMIT ? OFFSET ?`,
       [...params, pageSize, (page - 1) * pageSize]
     );
-    res.json({ rows, page, pageSize, total });
+    res.json({ rows, page, pageSize, total, summary });
   } catch (err) {
     next(err);
   }

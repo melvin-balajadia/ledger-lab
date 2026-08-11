@@ -1,9 +1,12 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
+import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
 import { PROJECT_ID } from '../hooks/useProjectData';
 import { useRestorePurchaseOrder, useVoidedPurchaseOrders } from '../hooks/usePurchaseOrders';
+import { useRetentionSummary } from '../hooks/useDashboardAnalytics';
+import { useTableUrlState } from '../hooks/useTableUrlState';
 import { PurchaseOrderFilters, type PurchaseOrderFilterValues } from '../components/PurchaseOrderFilters';
 import { PurchaseOrderDetail } from '../components/PurchaseOrderDetail';
 import { PurchaseOrderForm } from '../components/PurchaseOrderForm';
@@ -11,11 +14,13 @@ import { DataTable, type ColumnDef, type FetchParams } from '../components/DataT
 import { SegmentedControl } from '../components/SegmentedControl';
 import { ProgressBar } from '../components/ProgressBar';
 import { StatusPill } from '../components/StatusPill';
+import { SummaryStats } from '../components/SummaryStats';
+import { BudgetItemBreakdown } from '../components/BudgetItemBreakdown';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { Tone } from '../lib/tones';
-import type { PurchaseOrder, VoidedPurchaseOrder } from '../types';
+import type { PurchaseOrder, PurchaseOrderListResponse, PurchaseOrderSummary, VoidedPurchaseOrder } from '../types';
 
 const STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
   open: 'Open',
@@ -83,11 +88,18 @@ export function PurchaseOrders() {
   const [creating, setCreating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [summary, setSummary] = useState<PurchaseOrderSummary | null>(null);
   const voidedQuery = useVoidedPurchaseOrders(showDeleted);
   const restoreMutation = useRestorePurchaseOrder();
+  // Retention held is never folded into the contract/paid/balance totals
+  // above (CLAUDE.md) -- pulled from the same source RetentionPanel uses.
+  const retentionQuery = useRetentionSummary();
+  const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'po', filterKeys: [], defaultPerPage: 10 });
 
   const fetchData = useCallback(
-    async ({ page, perPage, search, sortKey, sortDir, signal }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('pageSize', String(perPage));
@@ -100,16 +112,34 @@ export function PurchaseOrders() {
       if (filters.status) params.set('status', filters.status);
       if (filters.supplier_id) params.set('supplier_id', String(filters.supplier_id));
       if (filters.budget_item_id) params.set('budget_item_id', String(filters.budget_item_id));
+      if (filters.planning_line_id) params.set('planning_line_id', String(filters.planning_line_id));
       if (filters.date_from) params.set('date_from', filters.date_from);
       if (filters.date_to) params.set('date_to', filters.date_to);
 
-      const json = await fetchJson<{ rows: PurchaseOrder[]; page: number; pageSize: number; total: number }>(
+      const json = await fetchJson<PurchaseOrderListResponse>(
         `/api/projects/${PROJECT_ID}/purchase-orders?${params}`,
         { signal },
       );
+      setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, outstandingOnly],
+    [filters, outstandingOnly, syncToUrl],
+  );
+
+  const budgetItemGroups = useMemo(
+    () =>
+      groupByBudgetItem(
+        (summary?.by_budget_item ?? []).map((r) => {
+          const { key, label } = budgetItemKeyAndLabel(r.budget_item_id, r.budget_item_no, r.budget_item_description);
+          return {
+            budgetItemKey: key,
+            budgetItemLabel: label,
+            codeLabel: r.planning_line_code ?? 'No JPL code',
+            amount: r.total,
+          };
+        }),
+      ),
+    [summary],
   );
 
   function closeDetail() {
@@ -140,6 +170,24 @@ export function PurchaseOrders() {
         </div>
       </div>
 
+      {summary && (
+        <SummaryStats
+          stats={[
+            { label: 'Total contract', value: formatMoney(summary.total_contract) },
+            { label: 'Total paid', value: formatMoney(summary.total_paid) },
+            { label: 'Balance vs. contract', value: formatMoney(summary.total_balance) },
+            { label: 'Outstanding POs', value: summary.outstanding_count.toLocaleString() },
+          ]}
+          breakdown={
+            retentionQuery.data
+              ? [{ label: 'Retention held', value: formatMoney(retentionQuery.data.total_held) }]
+              : undefined
+          }
+        />
+      )}
+
+      <BudgetItemBreakdown groups={budgetItemGroups} title="By budget item (contract amount)" />
+
       <SegmentedControl
         value={outstandingOnly}
         onChange={setOutstandingOnly}
@@ -158,10 +206,11 @@ export function PurchaseOrders() {
         onView={(row) => setSelected(row)}
         exportable
         title="Purchase Orders"
-        perPageOptions={[25, 50, 100]}
+        perPageOptions={[10, 25, 50, 100]}
         searchPlaceholder="Search PO no. or description…"
         emptyMessage="No purchase orders match these filters."
         refreshKey={refreshKey}
+        initialState={buildFetchParams()}
       />
 
       {selected && (

@@ -65,11 +65,31 @@ export interface Replenishment {
   planning_line_description: string | null;
 }
 
+// One row per (budget_item, planning_line) combo actually present in the
+// filtered set -- grouped client-side into a budget-item tree with JPL
+// codes nested underneath (see lib/budgetItemGrouping.ts).
+export interface BudgetItemJplTotal {
+  budget_item_id: number | null;
+  budget_item_no: string | null;
+  budget_item_description: string | null;
+  planning_line_id: number | null;
+  planning_line_code: string | null;
+  total: string;
+}
+
+export interface ReplenishmentSummary {
+  row_count: number;
+  total_amount: string;
+  needs_review_count: number;
+  by_budget_item: BudgetItemJplTotal[];
+}
+
 export interface ReplenishmentListResponse {
   rows: Replenishment[];
   page: number;
   pageSize: number;
   total: number;
+  summary: ReplenishmentSummary;
 }
 
 export interface ReplenishmentLineInput {
@@ -99,6 +119,7 @@ export interface CashAdvance {
   status: CashAdvanceStatus;
   document_no: string | null;
   control_no: string | null;
+  liquidation_control_no: string | null;
   needs_review: 0 | 1;
   created_by: string | null;
   updated_by: string | null;
@@ -111,11 +132,21 @@ export interface CashAdvance {
   planning_line_description: string | null;
 }
 
+export interface CashAdvanceSummary {
+  row_count: number;
+  total_amount: string;
+  total_liquidated: string;
+  outstanding_amount: string;
+  needs_review_count: number;
+  by_budget_item: BudgetItemJplTotal[];
+}
+
 export interface CashAdvanceListResponse {
   rows: CashAdvance[];
   page: number;
   pageSize: number;
   total: number;
+  summary: CashAdvanceSummary;
 }
 
 export interface CashAdvanceLineInput {
@@ -160,11 +191,20 @@ export interface AdditionalPayment {
   planning_line_description: string | null;
 }
 
+export interface AdditionalPaymentSummary {
+  row_count: number;
+  total_amount: string;
+  needs_review_count: number;
+  by_expense_type: { expense_type: ExpenseType; total: string }[];
+  by_budget_item: BudgetItemJplTotal[];
+}
+
 export interface AdditionalPaymentListResponse {
   rows: AdditionalPayment[];
   page: number;
   pageSize: number;
   total: number;
+  summary: AdditionalPaymentSummary;
 }
 
 export interface AdditionalPaymentLineInput {
@@ -240,6 +280,23 @@ export interface PurchaseOrder {
   ref_no: string | null;
   remarks: string | null;
   retention_pct: string | null;
+}
+
+export interface PurchaseOrderSummary {
+  row_count: number;
+  total_contract: string;
+  total_paid: string;
+  total_balance: string;
+  outstanding_count: number;
+  by_budget_item: BudgetItemJplTotal[];
+}
+
+export interface PurchaseOrderListResponse {
+  rows: PurchaseOrder[];
+  page: number;
+  pageSize: number;
+  total: number;
+  summary: PurchaseOrderSummary;
 }
 
 export interface POPaymentTerm {
@@ -436,11 +493,20 @@ export interface PayrollPeriod {
   reconciliation_status: ReconciliationStatus;
 }
 
+export interface PayrollPeriodSummary {
+  row_count: number;
+  total_control: string;
+  total_extracted: string;
+  total_delta: string;
+  attention_count: number;
+}
+
 export interface PayrollPeriodListResponse {
   rows: PayrollPeriod[];
   page: number;
   pageSize: number;
   total: number;
+  summary: PayrollPeriodSummary;
 }
 
 export interface CopyRosterSource {
@@ -481,11 +547,17 @@ export interface Worker {
   total_earned: string;
 }
 
+export interface WorkerSummary {
+  row_count: number;
+  total_earned: string;
+}
+
 export interface WorkerListResponse {
   rows: Worker[];
   page: number;
   pageSize: number;
   total: number;
+  summary: WorkerSummary;
 }
 
 export interface WorkerPayrollEntry {

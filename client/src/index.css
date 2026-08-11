@@ -19,6 +19,21 @@
   --color-danger: #b42318;
   --color-danger-soft: #fbeae9;
 
+  /* Categorical chart series -- fixed order, never cycled or reassigned per
+     chart (a filtered-out series must not repaint the survivors). This is
+     the dataviz skill's reference-palette order, sliced to the 5 slots this
+     app actually uses; validated for adjacent-pair CVD separation and
+     normal-vision distinction at both surfaces via
+     scripts/validate_palette.js -- do not reorder or swap hues without
+     re-running it. Payroll/Replenishments/PO Payments/Cash Advances/
+     Additional Payments map to slots 1-5 in that fixed order everywhere
+     (trend chart, donut, legends). */
+  --series-1: #2a78d6; /* blue */
+  --series-2: #eb6834; /* orange */
+  --series-3: #1baf7a; /* aqua */
+  --series-4: #eda100; /* yellow */
+  --series-5: #e87ba4; /* magenta */
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -54,6 +69,15 @@
     --color-danger: #f04438;
     --color-danger-soft: rgba(240, 68, 56, 0.14);
 
+    /* Same 5 slots, dark-surface steps -- not a separate palette, the same
+       validated order re-stepped for the dark surface (see the light block
+       above for the rest of this comment). */
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+
     --shadow-card:
       0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.28);
   }
@@ -76,5 +100,117 @@ body {
   * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Print / Save as PDF.  She reports these figures up a chain that happens
+   outside this app (CLAUDE.md), so the printout is a real deliverable, not a
+   convenience.  Uses the browser's own print pipeline -- on Windows
+   "Microsoft Print to PDF" covers the PDF case, so there is no PDF library
+   and no server-side rendering to maintain.
+   --------------------------------------------------------------------------- */
+@media print {
+  /* Force the light palette regardless of the screen theme.  Without this a
+     dark-mode user prints white text on a near-black background and empties a
+     toner cartridge per page.  Re-declaring the same tokens is enough -- every
+     utility in the app is built from these variables, AND now every chart
+     series color, since Recharts reads these vars live via SVG/inline style
+     rather than baking them into a canvas at mount time (Chart.js's approach,
+     which is why the old charts printed washed-out from a dark session). */
+  :root {
+    --color-canvas: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-2: #ffffff;
+    --color-ink: #10201c;
+    --color-ink-muted: #3d4a45;
+    --color-ink-faint: #5b6b65;
+    --color-rule: #c7d0cc;
+    --color-rule-strong: #8b9992;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --color-accent: #0f6b5c;
+    --color-accent-strong: #0b4f44;
+    --color-accent-soft: #eef4f2;
+    --color-warn: #8a3708;
+    --color-warn-soft: #fbf1e8;
+    --color-success: #055634;
+    --color-success-soft: #eaf5ef;
+    --color-danger: #8f1c13;
+    --color-danger-soft: #fbecea;
+    --shadow-card: none;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  /* Every control on the page is meaningless on paper: nav is buttons/links,
+     the toolbar is buttons, pagination is buttons, and the Print button itself
+     must not appear in its own output.  Overview's clickable table rows are
+     <tr>, not buttons, so they survive this. */
+  button,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Keep panels and table rows whole rather than split across a page break --
+     half a figure at the foot of a page is worse than a shorter page. */
+  tr,
+  .shadow-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Exception: a panel wrapping a table (Budget vs. actual, Retention held)
+     can be taller than a full page. Forcing THAT whole panel to the next
+     page -- same as any other .shadow-card -- leaves the rest of the
+     current page blank. Let these break at row boundaries instead: `tr`
+     above still keeps a single row from splitting, and <thead> repeats on
+     the new page natively. */
+  .shadow-card:has(table),
+  .shadow-card:has(table) table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  /* A panel allowed to break internally (above) can otherwise break right
+     between its own header and body, orphaning the title alone at the foot
+     of a page (this happened to "Retention held"). Pin the header so a
+     break lands above it instead -- Panel.tsx's header row is always the
+     first direct child of .shadow-card. */
+  .shadow-card:has(table) > div:first-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Screen scroll containers must expand on paper or they clip to the
+     viewport width and silently drop right-hand columns. */
+  .overflow-x-auto,
+  .overflow-y-auto {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* min-w-* on wide tables forces horizontal overflow off the page edge. */
+  table {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 10px;
+  }
+
+  /* Sticky headers stack on top of body rows once the page is one long
+     document instead of a scroll container. */
+  thead th {
+    position: static !important;
   }
 }

@@ -1,12 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { fetchJson } from "../lib/api";
 import { toPageMeta } from "../lib/dataTablePage";
 import { formatMoney } from "../lib/formatMoney";
+import { budgetItemKeyAndLabel, groupByBudgetItem } from "../lib/budgetItemGrouping";
 import { PROJECT_ID } from "../hooks/useProjectData";
 import {
   useRestoreCashAdvance,
   useVoidedCashAdvances,
 } from "../hooks/useCashAdvances";
+import { useTableUrlState } from "../hooks/useTableUrlState";
 import {
   CashAdvanceFilters,
   type CashAdvanceFilterValues,
@@ -19,6 +21,8 @@ import {
 } from "../components/DataTable";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { StatusPill } from "../components/StatusPill";
+import { SummaryStats } from "../components/SummaryStats";
+import { BudgetItemBreakdown } from "../components/BudgetItemBreakdown";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
 import { DeletedItemsModal } from "../components/DeletedItemsModal";
@@ -27,6 +31,7 @@ import type {
   CashAdvance,
   CashAdvanceListResponse,
   CashAdvanceStatus,
+  CashAdvanceSummary,
 } from "../types";
 
 const STATUS_LABEL: Record<CashAdvanceStatus, string> = {
@@ -117,18 +122,15 @@ export function CashAdvances() {
   const [modal, setModal] = useState<"create" | CashAdvance | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [summary, setSummary] = useState<CashAdvanceSummary | null>(null);
   const voidedQuery = useVoidedCashAdvances(showDeleted);
   const restoreMutation = useRestoreCashAdvance();
+  const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: "ca", filterKeys: [], defaultPerPage: 10 });
 
   const fetchData = useCallback(
-    async ({
-      page,
-      perPage,
-      search,
-      sortKey,
-      sortDir,
-      signal,
-    }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(perPage));
@@ -148,15 +150,32 @@ export function CashAdvances() {
         `/api/projects/${PROJECT_ID}/cash-advances?${params}`,
         { signal },
       );
+      setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly],
+    [filters, needsReviewOnly, syncToUrl],
   );
 
   function handleModalClose() {
     setModal(null);
     setRefreshKey((k) => k + 1);
   }
+
+  const budgetItemGroups = useMemo(
+    () =>
+      groupByBudgetItem(
+        (summary?.by_budget_item ?? []).map((r) => {
+          const { key, label } = budgetItemKeyAndLabel(r.budget_item_id, r.budget_item_no, r.budget_item_description);
+          return {
+            budgetItemKey: key,
+            budgetItemLabel: label,
+            codeLabel: r.planning_line_code ?? "No JPL code",
+            amount: r.total,
+          };
+        }),
+      ),
+    [summary],
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -178,6 +197,23 @@ export function CashAdvances() {
         </div>
       </div>
 
+      {summary && (
+        <SummaryStats
+          stats={[
+            { label: "Total advanced", value: formatMoney(summary.total_amount) },
+            { label: "Total liquidated", value: formatMoney(summary.total_liquidated) },
+            { label: "Outstanding", value: formatMoney(summary.outstanding_amount) },
+            {
+              label: "Needs review",
+              value: summary.needs_review_count.toLocaleString(),
+              tone: summary.needs_review_count > 0 ? "warn" : undefined,
+            },
+          ]}
+        />
+      )}
+
+      <BudgetItemBreakdown groups={budgetItemGroups} />
+
       <SegmentedControl
         value={needsReviewOnly}
         onChange={setNeedsReviewOnly}
@@ -196,10 +232,11 @@ export function CashAdvances() {
         onView={(row) => setModal(row)}
         exportable
         title="Cash Advances"
-        perPageOptions={[25, 50, 100]}
+        perPageOptions={[10, 25, 50, 100]}
         searchPlaceholder="Search purpose, requested by, or control no…"
         emptyMessage="No cash advances match these filters."
         refreshKey={refreshKey}
+        initialState={buildFetchParams()}
       />
 
       {modal && (

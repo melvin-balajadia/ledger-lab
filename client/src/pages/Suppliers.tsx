@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
+import { useTableUrlState } from '../hooks/useTableUrlState';
 import { SupplierForm } from '../components/SupplierForm';
 import { DataTable, type ColumnDef, type FetchParams } from '../components/DataTable';
 import { SegmentedControl } from '../components/SegmentedControl';
@@ -25,9 +26,12 @@ export function Suppliers() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [modal, setModal] = useState<'create' | Supplier | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'sup', filterKeys: [], defaultPerPage: 10 });
 
   const fetchData = useCallback(
-    async ({ page, perPage, search, sortKey, sortDir, signal }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('pageSize', String(perPage));
@@ -41,7 +45,7 @@ export function Suppliers() {
       const json = await fetchJson<SupplierListResponse>(`/api/suppliers?${params}`, { signal });
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [activeFilter],
+    [activeFilter, syncToUrl],
   );
 
   function handleModalClose() {
@@ -75,10 +79,11 @@ export function Suppliers() {
         onView={(row) => setModal(row)}
         exportable
         title="Suppliers"
-        perPageOptions={[50, 100, 200]}
+        perPageOptions={[10, 50, 100, 200]}
         searchPlaceholder="Search supplier name…"
         emptyMessage="No suppliers match these filters."
         refreshKey={refreshKey}
+        initialState={buildFetchParams()}
       />
 
       {modal && (

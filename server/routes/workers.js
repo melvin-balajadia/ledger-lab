@@ -56,13 +56,21 @@ router.get('/:id/workers', async (req, res, next) => {
       ${whereSql}
     `;
 
-    const [[{ total }]] = await pool.query(`SELECT COUNT(*) AS total FROM workers w ${whereSql}`, params);
+    // Reuses selectSql (rather than a separate COUNT) so the summary's
+    // total_earned always matches the same per-worker figure the table
+    // itself sums, filtered the same way.
+    const [[summaryRow]] = await pool.query(
+      `SELECT COUNT(*) AS row_count, COALESCE(SUM(sub.total_earned), 0) AS total_earned FROM (${selectSql}) sub`,
+      [projectId, ...params]
+    );
+    const total = summaryRow.row_count;
+    const summary = { row_count: summaryRow.row_count, total_earned: summaryRow.total_earned };
     const [rows] = await pool.query(
       `${selectSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`,
       [projectId, ...params, pageSize, (page - 1) * pageSize]
     );
 
-    res.json({ rows, page, pageSize, total });
+    res.json({ rows, page, pageSize, total, summary });
   } catch (err) {
     next(err);
   }

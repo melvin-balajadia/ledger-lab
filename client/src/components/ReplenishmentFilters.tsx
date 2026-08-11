@@ -77,6 +77,7 @@ export function ReplenishmentFilters({ onChange }: { onChange: (filters: FilterV
         <IconList className="pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2 text-ink-faint" />
         <PlanningLinePicker
           hasIcon
+          filterMode
           value={planningLine?.id ?? null}
           onChange={(pl) => {
             setPlanningLine(pl);

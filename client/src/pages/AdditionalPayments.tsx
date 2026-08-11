@@ -1,18 +1,29 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
+import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
 import { PROJECT_ID } from '../hooks/useProjectData';
 import { useRestoreAdditionalPayment, useVoidedAdditionalPayments } from '../hooks/useAdditionalPayments';
+import { useTableUrlState } from '../hooks/useTableUrlState';
 import { AdditionalPaymentFilters, type AdditionalPaymentFilterValues } from '../components/AdditionalPaymentFilters';
 import { AdditionalPaymentForm } from '../components/AdditionalPaymentForm';
 import { DataTable, type ColumnDef, type FetchParams } from '../components/DataTable';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { StatusPill } from '../components/StatusPill';
+import { SummaryStats } from '../components/SummaryStats';
+import { BudgetItemBreakdown } from '../components/BudgetItemBreakdown';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
-import type { AdditionalPayment, AdditionalPaymentListResponse } from '../types';
+import type { AdditionalPayment, AdditionalPaymentListResponse, AdditionalPaymentSummary } from '../types';
+
+// 'customs_duty' -> 'Customs duty' -- same casing as the Type column's
+// capitalize-and-un-underscore treatment, just done once for the summary row.
+function expenseTypeLabel(type: string): string {
+  const spaced = type.replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
 
 const columns: ColumnDef<AdditionalPayment>[] = [
   { key: 'txn_date', label: 'Date', sortable: true },
@@ -60,11 +71,15 @@ export function AdditionalPayments() {
   const [modal, setModal] = useState<'create' | AdditionalPayment | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [summary, setSummary] = useState<AdditionalPaymentSummary | null>(null);
   const voidedQuery = useVoidedAdditionalPayments(showDeleted);
   const restoreMutation = useRestoreAdditionalPayment();
+  const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'ap', filterKeys: [], defaultPerPage: 10 });
 
   const fetchData = useCallback(
-    async ({ page, perPage, search, sortKey, sortDir, signal }: FetchParams) => {
+    async (fetchParams: FetchParams) => {
+      const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
+      syncToUrl(fetchParams);
       const params = new URLSearchParams();
       params.set('page', String(page));
       params.set('pageSize', String(perPage));
@@ -84,15 +99,32 @@ export function AdditionalPayments() {
         `/api/projects/${PROJECT_ID}/additional-payments?${params}`,
         { signal },
       );
+      setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly],
+    [filters, needsReviewOnly, syncToUrl],
   );
 
   function handleModalClose() {
     setModal(null);
     setRefreshKey((k) => k + 1);
   }
+
+  const budgetItemGroups = useMemo(
+    () =>
+      groupByBudgetItem(
+        (summary?.by_budget_item ?? []).map((r) => {
+          const { key, label } = budgetItemKeyAndLabel(r.budget_item_id, r.budget_item_no, r.budget_item_description);
+          return {
+            budgetItemKey: key,
+            budgetItemLabel: label,
+            codeLabel: r.planning_line_code ?? 'No JPL code',
+            amount: r.total,
+          };
+        }),
+      ),
+    [summary],
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -112,6 +144,26 @@ export function AdditionalPayments() {
         </div>
       </div>
 
+      {summary && (
+        <SummaryStats
+          stats={[
+            { label: 'Total (cash out)', value: formatMoney(summary.total_amount) },
+            { label: 'Entries', value: summary.row_count.toLocaleString() },
+            {
+              label: 'Needs review',
+              value: summary.needs_review_count.toLocaleString(),
+              tone: summary.needs_review_count > 0 ? 'warn' : undefined,
+            },
+          ]}
+          breakdown={summary.by_expense_type.map((t) => ({
+            label: expenseTypeLabel(t.expense_type),
+            value: formatMoney(t.total),
+          }))}
+        />
+      )}
+
+      <BudgetItemBreakdown groups={budgetItemGroups} />
+
       <SegmentedControl
         value={needsReviewOnly}
         onChange={setNeedsReviewOnly}
@@ -130,10 +182,11 @@ export function AdditionalPayments() {
         onView={(row) => setModal(row)}
         exportable
         title="Additional Payments"
-        perPageOptions={[25, 50, 100]}
+        perPageOptions={[10, 25, 50, 100]}
         searchPlaceholder="Search payee, description, or voucher no…"
         emptyMessage="No additional payments match these filters."
         refreshKey={refreshKey}
+        initialState={buildFetchParams()}
       />
 
       {modal && (
