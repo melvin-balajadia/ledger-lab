@@ -3,14 +3,15 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 
-// Images only -- these are photo references (MSR labels, delivery docs),
-// never editable content, so disk + a metadata row is enough (see
-// db/migrations/011_po_attachments.sql).
+// Photos or PDFs -- these are reference documents (MSR labels, delivery
+// docs, scanned forms), never editable content, so disk + a metadata row is
+// enough (see db/migrations/011_po_attachments.sql).
 const ALLOWED_TYPES = {
   'image/jpeg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
   'image/gif': '.gif',
+  'application/pdf': '.pdf',
 };
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -48,7 +49,7 @@ const upload = multer({
   limits: { fileSize: MAX_SIZE_BYTES },
   fileFilter(req, file, cb) {
     if (!ALLOWED_TYPES[file.mimetype]) {
-      return cb(new Error('Only JPEG, PNG, WEBP, or GIF images are allowed.'));
+      return cb(new Error('Only JPEG, PNG, WEBP, GIF, or PDF files are allowed.'));
     }
     cb(null, true);
   },
