@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { SITE_NAME } from './site.config'
+
+document.title = `LedgerLab — ${SITE_NAME}`
 
 const queryClient = new QueryClient()
 

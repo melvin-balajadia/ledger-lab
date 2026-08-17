@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLogin } from "../hooks/useAuth";
 import { Button } from "../components/Button";
 import { IconEye, IconEyeOff } from "../components/icons";
+import { SITE_TITLE } from "../site.config";
 
 // A faint ledger-paper ruling behind the card -- the one deliberate flourish
 // on this page, and it's not decoration for its own sake: this tool is a
@@ -38,7 +39,7 @@ export function Login() {
       >
         <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold tracking-wide text-accent uppercase">
-            Royale Cold Storage — Plaridel Extension
+            {SITE_TITLE}
           </span>
           <h1 className="font-display text-[28px] font-semibold tracking-tight text-ink">
             LedgerLab

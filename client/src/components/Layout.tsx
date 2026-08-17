@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthMe, useLogout } from "../hooks/useAuth";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
+import { SITE_TITLE } from "../site.config";
 import { BackupButton } from "./BackupButton";
 import {
   IconAlertCircle,
@@ -55,7 +56,7 @@ export function Layout() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold tracking-wide text-accent uppercase">
-              Royale Cold Storage — Plaridel Extension
+              {SITE_TITLE}
             </span>
             <h1 className="font-display text-2xl font-semibold text-balance text-ink sm:text-3xl print:hidden">
               LedgerLab - Cost Management System

@@ -1,4 +1,4 @@
-# Nightly backup of the Plaridel costing database.
+# Nightly backup of this deployment's database (see server/.env for which one).
 # Keeps the 30 most recent dumps. Schedule via Task Scheduler.
 
 $ErrorActionPreference = 'Stop'
@@ -6,15 +6,20 @@ $ErrorActionPreference = 'Stop'
 $project   = Split-Path -Parent $PSScriptRoot
 $backupDir = Join-Path $project 'backups'
 $mysqldump = 'C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe'
-$database  = 'rcsni_cost'
 $user      = 'root'
 
-# Read the password from server/.env instead of duplicating it here -- a copy
-# hardcoded in this script would silently go stale (and break backups) the
-# next time the DB password is changed in .env.
+# Read the database name and password from server/.env instead of duplicating
+# them here -- a copy hardcoded in this script would silently go stale (and
+# break backups, or back up the wrong site's database) the next time either
+# changes in .env. Same reason server/lib/backup.js (the in-app "Backup now"
+# button) reads both from process.env rather than a constant.
 $envFile = Join-Path $project 'server\.env'
 if (-not (Test-Path $envFile)) { throw "server\.env not found at $envFile" }
-$passwordLine = Get-Content $envFile | Where-Object { $_ -match '^DB_PASSWORD=' } | Select-Object -First 1
+$envLines = Get-Content $envFile
+$databaseLine = $envLines | Where-Object { $_ -match '^DB_NAME=' } | Select-Object -First 1
+if (-not $databaseLine) { throw "DB_NAME not found in $envFile" }
+$database = $databaseLine -replace '^DB_NAME=', ''
+$passwordLine = $envLines | Where-Object { $_ -match '^DB_PASSWORD=' } | Select-Object -First 1
 if (-not $passwordLine) { throw "DB_PASSWORD not found in $envFile" }
 $password = $passwordLine -replace '^DB_PASSWORD=', ''
 

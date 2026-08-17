@@ -3,7 +3,9 @@ import { fetchJson } from '../lib/api';
 import type { BudgetSummaryRow, ProjectKpis } from '../types';
 
 // No multi-tenancy in the UI (CLAUDE.md) -- single project, hardcoded.
-export const PROJECT_ID = 1;
+// Which project this deployment points at lives in site.config.ts.
+import { PROJECT_ID } from '../site.config';
+export { PROJECT_ID };
 
 export function useProjectSummary() {
   return useQuery({

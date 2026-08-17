@@ -105,8 +105,13 @@ budgets will be adjusted. Never `UPDATE budget_items.revised_budget` in place. I
 - **No approval workflow.** The Coordinator → SVP → CEO chain happens outside this app.
   It's a monitoring tool.
 - **No roles or permissions.** One user. `users` table is username + bcrypt hash only.
-- **No multi-tenancy.** The schema supports a second project (`DSEXP`, Villasis) but the
-  UI is single-project.
+- **No multi-tenancy inside one running app.** The schema supports a second project
+  (`DSEXP`, Villasis) but a given instance's UI still only ever points at one project —
+  no project switcher, no per-request tenant resolution. Villasis runs as its own
+  separate deployment (own clone, own database, own port) of the same codebase instead;
+  see "Running a second site" in `DEPLOYMENT.md` and `client/src/site.config.ts` (gitignored,
+  created per checkout from `site.config.example.ts` — the one frontend file that names
+  which project + branding a given deployment uses).
 - **No payroll calculation.** The app records weekly net pay. The daily rates and DTR
   detail no longer exist in the source. `timekeeping_detail` is a stub — leave it empty.
 

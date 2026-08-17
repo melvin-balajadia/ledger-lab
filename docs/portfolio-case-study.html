@@ -1,0 +1,1085 @@
+<title>LedgerLab</title>
+
+<style>
+  :root {
+    --paper:       #F6F7F4;
+    --surface:     #FFFFFF;
+    --surface-2:   #EEF1EC;
+    --rule:        #D9DED6;
+    --rule-strong: #A7B1A6;
+    --ink:         #15201B;
+    --ink-2:       #4A574F;
+    --ink-3:       #6F7C73;
+    --accent:      #0F6B4F;
+    --accent-soft: #DDEDE4;
+    --red:         #A63523;
+    --red-soft:    #F4E0DC;
+    --amber:       #8A6410;
+    --amber-soft:  #F4EBD6;
+
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+    --rail: 12.5rem;
+    --gut: 2.5rem;
+    --measure: 34rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:       #0E1412;
+      --surface:     #141C19;
+      --surface-2:   #1A2420;
+      --rule:        #29332F;
+      --rule-strong: #45534D;
+      --ink:         #E7EDE9;
+      --ink-2:       #A4B0AA;
+      --ink-3:       #7D8B84;
+      --accent:      #4FCF9B;
+      --accent-soft: #16332A;
+      --red:         #EF8C74;
+      --red-soft:    #3A211B;
+      --amber:       #DFB25E;
+      --amber-soft:  #352B15;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:       #0E1412;
+    --surface:     #141C19;
+    --surface-2:   #1A2420;
+    --rule:        #29332F;
+    --rule-strong: #45534D;
+    --ink:         #E7EDE9;
+    --ink-2:       #A4B0AA;
+    --ink-3:       #7D8B84;
+    --accent:      #4FCF9B;
+    --accent-soft: #16332A;
+    --red:         #EF8C74;
+    --red-soft:    #3A211B;
+    --amber:       #DFB25E;
+    --amber-soft:  #352B15;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  .page {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 0 1.5rem 6rem;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 4.5rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 1.25rem;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: clamp(2.4rem, 7vw, 3.9rem);
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h1 .dot { color: var(--accent); }
+
+  .standfirst {
+    max-width: var(--measure);
+    font-size: 1.14rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+    margin: 1.4rem 0 0;
+    text-wrap: pretty;
+  }
+
+  .credits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1.25rem 2rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .credits dt {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .credits dd {
+    margin: 0.35rem 0 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  /* ---------- section scaffold ---------- */
+
+  .section {
+    display: grid;
+    grid-template-columns: var(--rail) minmax(0, 1fr);
+    gap: var(--gut);
+    padding: 3.25rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section:last-of-type { border-bottom: 0; }
+
+  .rail { position: relative; }
+
+  .rail-no {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rail-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-top: 0.4rem;
+    line-height: 1.5;
+  }
+
+  .body > *:first-child { margin-top: 0; }
+  .body > *:last-child { margin-bottom: 0; }
+
+  h2 {
+    font-family: var(--sans);
+    font-size: 1.5rem;
+    font-weight: 640;
+    letter-spacing: -0.018em;
+    line-height: 1.2;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin: 2.2rem 0 0.8rem;
+  }
+
+  p { margin: 0 0 1.05rem; max-width: var(--measure); text-wrap: pretty; }
+
+  .body ul { margin: 0 0 1.05rem; padding-left: 1.1rem; max-width: var(--measure); }
+  .body li { margin-bottom: 0.5rem; }
+
+  strong { font-weight: 640; }
+
+  code, .num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  code {
+    font-size: 0.86em;
+    background: var(--surface-2);
+    padding: 0.1em 0.34em;
+    border: 1px solid var(--rule);
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- the three-ledger hero ---------- */
+
+  .ledgers {
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    padding: 1.6rem 1.5rem 1.4rem;
+    margin: 0 0 1.6rem;
+  }
+
+  .ledger-row + .ledger-row { margin-top: 1.35rem; }
+
+  .ledger-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .ledger-name {
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .ledger-amt {
+    font-family: var(--mono);
+    font-size: 1.02rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .track {
+    height: 0.62rem;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    margin-top: 0.5rem;
+    position: relative;
+  }
+
+  .fill { height: 100%; background: var(--accent); }
+  .fill.tier2 { opacity: 0.72; }
+  .fill.tier3 { opacity: 0.44; }
+
+  .ledger-note {
+    font-size: 0.82rem;
+    color: var(--ink-3);
+    margin-top: 0.4rem;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0;
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    margin: 0 0 1.4rem;
+  }
+
+  .split > div { padding: 1.1rem 1.25rem; }
+  .split > div + div { border-left: 1px solid var(--rule); }
+
+  @media (max-width: 34rem) {
+    .split > div + div { border-left: 0; border-top: 1px solid var(--rule); }
+  }
+
+  .split .k {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .split .v {
+    font-family: var(--mono);
+    font-size: 1.28rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
+    margin-top: 0.3rem;
+  }
+
+  .split .q {
+    font-size: 0.85rem;
+    color: var(--ink-2);
+    margin-top: 0.35rem;
+    line-height: 1.4;
+  }
+
+  /* ---------- data tables ---------- */
+
+  .scroll { overflow-x: auto; margin: 0 0 1.4rem; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: 0.88rem;
+  }
+
+  caption {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding-bottom: 0.55rem;
+  }
+
+  th, td {
+    padding: 0.52rem 0.9rem 0.52rem 0;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  td.n, th.n {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    padding-right: 0;
+  }
+
+  tbody tr:last-child td { border-bottom: 0; }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.14rem 0.42rem;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+
+  .pill.ok    { color: var(--accent); background: var(--accent-soft); }
+  .pill.expl  { color: var(--amber);  background: var(--amber-soft); }
+
+  .delta-ok  { color: var(--accent); }
+  .delta-var { color: var(--amber); }
+
+  /* ---------- metric strip ---------- */
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    border-top: 1px solid var(--rule-strong);
+    border-left: 1px solid var(--rule);
+  }
+
+  .metric {
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+  }
+
+  .metric .v {
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .metric .k {
+    font-size: 0.78rem;
+    color: var(--ink-3);
+    margin-top: 0.25rem;
+    line-height: 1.35;
+  }
+
+  /* ---------- before / after ---------- */
+
+  .ba { border-top: 1px solid var(--rule-strong); margin: 0 0 1.4rem; }
+
+  .ba-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.9rem;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .ba-from { color: var(--ink-3); font-size: 0.9rem; }
+  .ba-to   { font-size: 0.9rem; }
+  .ba-arrow {
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 40rem) {
+    .ba-row { grid-template-columns: 1fr; gap: 0.2rem; }
+    .ba-arrow { display: none; }
+    .ba-to::before { content: "→ "; color: var(--accent); font-family: var(--mono); }
+  }
+
+  /* ---------- quote ---------- */
+
+  blockquote {
+    margin: 0 0 1.3rem;
+    padding: 0 0 0 1.1rem;
+    border-left: 2px solid var(--accent);
+    max-width: var(--measure);
+    font-size: 1.02rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+
+  blockquote cite {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    font-style: normal;
+    color: var(--ink-3);
+    margin-top: 0.6rem;
+  }
+
+  /* ---------- scope list ---------- */
+
+  .scope { list-style: none; padding: 0; margin: 0 0 1.4rem; border-top: 1px solid var(--rule); }
+
+  .scope li {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 1.6rem 1fr;
+    gap: 0.6rem;
+    margin: 0;
+  }
+
+  .scope .mark {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--red);
+    line-height: 1.7;
+  }
+
+  .scope .why { color: var(--ink-3); font-size: 0.88rem; display: block; }
+
+  /* ---------- stack ---------- */
+
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1.4rem 2rem;
+  }
+
+  .stack-grid dt {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .stack-grid dd {
+    margin: 0.5rem 0 0;
+    font-family: var(--mono);
+    font-size: 0.83rem;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+
+  /* ---------- footer ---------- */
+
+  .colophon {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    letter-spacing: 0.05em;
+    color: var(--ink-3);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  /* ---------- theme toggle ---------- */
+
+  .toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    background: var(--surface);
+    color: var(--ink-2);
+    border: 1px solid var(--rule-strong);
+    padding: 0.38rem 0.7rem;
+    cursor: pointer;
+  }
+
+  .toggle:hover { color: var(--ink); border-color: var(--ink-3); }
+
+  @media (max-width: 46rem) {
+    .section { grid-template-columns: 1fr; gap: 1rem; padding: 2.5rem 0; }
+    .rail { display: flex; align-items: baseline; gap: 0.7rem; }
+    .rail-label { margin-top: 0; }
+    .masthead { padding-top: 3.5rem; }
+  }
+</style>
+
+<button class="toggle" id="themeToggle" type="button">Theme</button>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Case study · Internal tooling · 2026</p>
+    <h1>LedgerLab<span class="dot">.</span></h1>
+    <p class="standfirst">
+      Two hand-maintained spreadsheets tracked a <strong>PHP 1.33 billion</strong> cold-storage
+      construction project. They had stopped being reportable. I rebuilt them as a
+      single-user React + Express + MySQL ledger system — and found, on the way in, that the
+      spreadsheet had been adding together three kinds of money that must never be summed.
+    </p>
+
+    <dl class="credits">
+      <div>
+        <dt>Role</dt>
+        <dd>Data modelling, ETL, full-stack build</dd>
+      </div>
+      <div>
+        <dt>Stack</dt>
+        <dd>React 19 · Vite · Express · MySQL 8</dd>
+      </div>
+      <div>
+        <dt>Users</dt>
+        <dd>One accountant, running locally</dd>
+      </div>
+      <div>
+        <dt>Scale</dt>
+        <dd>6,851 seeded transaction rows · 265 POs · 3,822 payroll entries</dd>
+      </div>
+    </dl>
+  </header>
+
+  <!-- 1.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">1.0</div>
+      <div class="rail-label">The brief</div>
+    </div>
+    <div class="body">
+      <h2>The spreadsheet still worked. Reporting from it didn't.</h2>
+      <p>
+        The accountant had built both workbooks herself, and they were doing their job as a
+        record. What had broken was everything downstream: answering "how much is left on
+        item 4.0" meant reading across sheets that had drifted apart, and the weekly numbers
+        could no longer be defended when someone asked where a figure came from.
+      </p>
+      <p>
+        The two <code>.ods</code> files held <strong>20 named sheets</strong> between them, plus
+        12 dead <code>file:///D:/…</code> link sheets pointing at a payroll workbook on
+        someone else's drive. One sheet stored 43 weekly payroll blocks as a
+        246-worker × 43-week pivot grid. Another laid four weekly summaries
+        <em>side by side</em> across 66 columns.
+      </p>
+
+      <blockquote>
+        Every PO number, supplier name and charge code is typed by hand. There is no ERP.
+        <cite>The answer that reshaped the whole project</cite>
+      </blockquote>
+
+      <p>
+        That single fact moved the centre of gravity. If nothing upstream validates the data,
+        the app is not a reporting layer over a source of truth — the app <em>is</em> the
+        source of truth, and its real value is entry quality, not charts.
+      </p>
+    </div>
+  </section>
+
+  <!-- 2.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">2.0</div>
+      <div class="rail-label">The finding</div>
+    </div>
+    <div class="body">
+      <h2>Three ledgers, presented as one column of money</h2>
+      <p>
+        The summary sheet had six money columns that were routinely summed. They are not the
+        same kind of number. Budget is an <em>approval</em>. Contract value is a
+        <em>commitment</em>. Payments, replenishments, cash advances and payroll are
+        <em>disbursements</em>. Adding across those boundaries produces a figure that
+        describes nothing.
+      </p>
+
+      <div class="ledgers">
+        <div class="ledger-row">
+          <div class="ledger-head">
+            <span class="ledger-name">Budget · approved</span>
+            <span class="ledger-amt">₱ 1,333,876,003</span>
+          </div>
+          <div class="track"><div class="fill" style="width:100%"></div></div>
+          <div class="ledger-note">100.0%</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-head">
+            <span class="ledger-name">Commitment · contracts awarded</span>
+            <span class="ledger-amt">₱ 964,527,157</span>
+          </div>
+          <div class="track"><div class="fill tier2" style="width:72.3%"></div></div>
+          <div class="ledger-note">72.3% of budget</div>
+        </div>
+        <div class="ledger-row">
+          <div class="ledger-head">
+            <span class="ledger-name">Disbursement · cash paid out</span>
+            <span class="ledger-amt">₱ 481,937,708</span>
+          </div>
+          <div class="track"><div class="fill tier3" style="width:36.1%"></div></div>
+          <div class="ledger-note">36.1% of budget</div>
+        </div>
+      </div>
+
+      <p>
+        The consequence is a single word with two meanings. The spreadsheet showed one
+        "remaining" column. There are two, and they are <strong>PHP 482.6 M apart</strong>:
+      </p>
+
+      <div class="split">
+        <div>
+          <div class="k">Remaining vs contract</div>
+          <div class="v">₱ 369,348,846</div>
+          <div class="q">"How much can I still award?"</div>
+        </div>
+        <div>
+          <div class="k">Remaining vs disbursed</div>
+          <div class="v">₱ 851,938,295</div>
+          <div class="q">"How much cash have I actually spent?"</div>
+        </div>
+      </div>
+
+      <p>
+        Both are now first-class columns in <code>v_budget_vs_actual</code>, labelled in full in
+        the UI. The old sheet only ever showed the first — which is the one that makes a
+        project look further along than the bank balance does.
+      </p>
+
+      <h3>The corollary that cost the most to get right</h3>
+      <p>
+        PHP 26.6 M of customs duty, freight, terminal handling and marine insurance sat in the
+        source looking like contract value. Accounting confirmed it is landed cost —
+        <em>company expense, not an increase to contract</em>. Modelled the obvious way, budget
+        items 4.0 and 5.0 would have read PHP 26.6 M more committed than they are. It counts as
+        disbursement; it never touches <code>contract_amount</code>.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">3.0</div>
+      <div class="rail-label">Migration proof</div>
+    </div>
+    <div class="body">
+      <h2>Reconciled to the centavo, or explained to the centavo</h2>
+      <p>
+        A migration is only believable if it reconciles against the source's own control
+        totals. The first extraction pass left a PHP 28.3 M hole. After a round of questions to
+        accounting and a rewritten parser, that closed — and the two residuals that remain are
+        each traced to a specific row or a specific set of weeks.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <caption>Extracted vs the workbook's own stated totals</caption>
+          <thead>
+            <tr>
+              <th>Ledger</th>
+              <th class="n">Extracted</th>
+              <th class="n">Sheet control</th>
+              <th class="n">Difference</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cash advances</td>
+              <td class="n">2,201,128.33</td>
+              <td class="n">2,201,128.33</td>
+              <td class="n delta-ok">0.00</td>
+              <td><span class="pill ok">Exact</span></td>
+            </tr>
+            <tr>
+              <td>Additional payments</td>
+              <td class="n">26,631,738.32</td>
+              <td class="n">26,631,738.32</td>
+              <td class="n delta-ok">0.00</td>
+              <td><span class="pill ok">Exact</span></td>
+            </tr>
+            <tr>
+              <td>Replenishments</td>
+              <td class="n">13,256,268.29</td>
+              <td class="n">13,351,918.29</td>
+              <td class="n delta-var">−95,650.00</td>
+              <td><span class="pill expl">Traced</span></td>
+            </tr>
+            <tr>
+              <td>Payroll entries</td>
+              <td class="n">19,897,979.97</td>
+              <td class="n">19,712,192.06</td>
+              <td class="n delta-var">+185,787.91</td>
+              <td><span class="pill expl">Traced</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        The <strong>−95,650.00</strong> is <em>exactly</em> one replenishment charged to two
+        planning-line codes in a single cell. The source gives one lump sum and no division, so
+        both halves are loaded at zero and flagged, pending one answer from accounting. That the
+        gap equals that row to the centavo is itself the proof that nothing else is wrong.
+      </p>
+      <p>
+        The <strong>+185,787.91</strong> is 10 payroll weeks where the source's own worker rows
+        disagree with its own stated weekly total — a defect that predates the migration, now
+        visible instead of averaged away.
+      </p>
+
+      <div class="metrics">
+        <div class="metric"><div class="v">₱28.3 M</div><div class="k">Unexplained variance at first pass</div></div>
+        <div class="metric"><div class="v">₱0</div><div class="k">Unexplained variance now</div></div>
+        <div class="metric"><div class="v">0</div><div class="k">Source rows dropped</div></div>
+        <div class="metric"><div class="v">0.55%</div><div class="k">Rows flagged for review (38 of 6,851)</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">4.0</div>
+      <div class="rail-label">Data quality</div>
+    </div>
+    <div class="body">
+      <h2>Bad rows are a feature of the product, not a cleanup task</h2>
+      <p>
+        The tempting move is to drop or auto-correct rows that won't parse. Both destroy
+        evidence. Anything ambiguous loads with <code>needs_review = 1</code> and surfaces in a
+        queue where the accountant — the only person who knows the answer — fixes it in place.
+      </p>
+
+      <div class="scroll">
+        <table>
+          <caption>The review queue at load time</caption>
+          <thead>
+            <tr><th>Source</th><th class="n">Flagged</th><th>Why</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Payroll entries</td><td class="n">19</td><td>Worker had left — no charge code. Not an error; needs a bucket.</td></tr>
+            <tr><td>Weekly budget additions</td><td class="n">12</td><td>Four blocks share one copied date header. The real weeks aren't recoverable from the file.</td></tr>
+            <tr><td>Replenishments</td><td class="n">6</td><td>Four impossible dates, two halves of one split charge.</td></tr>
+            <tr><td>Purchase orders</td><td class="n">1</td><td>Payment-term milestones do not total 100%.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Transactions dated <code>1900</code>, <code>1958</code>, <code>2005</code> and
+        <code>2015</code> survived into the source unnoticed. Charge codes appeared as
+        <code>3.8.7.</code> and <code>3.2.5.2.</code> with trailing dots. One supplier was
+        recorded as <code>Inaguration</code>. Every one of those traces to a free-text field —
+        which is what section 5.0 is about.
+      </p>
+    </div>
+  </section>
+
+  <!-- 5.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">5.0</div>
+      <div class="rail-label">Entry design</div>
+    </div>
+    <div class="body">
+      <h2>Making the observed defects unrepresentable</h2>
+      <p>
+        With no ERP upstream, the entry forms are where the tool earns its keep over the
+        spreadsheet. Each control below exists because a specific, countable defect was found in
+        the source data — not because it is good practice in the abstract.
+      </p>
+
+      <div class="ba">
+        <div class="ba-row">
+          <div class="ba-from">Free-text charge code</div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-to">Tree picker over 99 codes, 7 levels deep</div>
+        </div>
+        <div class="ba-row">
+          <div class="ba-from">Typed supplier name, 324 of them</div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-to">Autocomplete with a near-match warning</div>
+        </div>
+        <div class="ba-row">
+          <div class="ba-from">31 spellings of ~8 real payment-term patterns</div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-to">Structured milestone rows that must total 100%</div>
+        </div>
+        <div class="ba-row">
+          <div class="ba-from">Duplicate PO numbers, caught by eye</div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-to">Uniqueness check on entry</div>
+        </div>
+        <div class="ba-row">
+          <div class="ba-from">Dates in 1900, 1958, 2005, 2015</div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-to">Validation against the project window</div>
+        </div>
+        <div class="ba-row">
+          <div class="ba-from">One invoice, two codes, one cell</div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-to">Split action creating sibling rows that must sum to the whole</div>
+        </div>
+      </div>
+
+      <p>
+        <code>payment_terms</code> is still stored verbatim for reference. It is no longer the
+        truth — the milestone rows are, and no form anywhere offers a text box for them.
+      </p>
+    </div>
+  </section>
+
+  <!-- 6.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">6.0</div>
+      <div class="rail-label">Engineering</div>
+    </div>
+    <div class="body">
+      <h2>Four decisions that keep the arithmetic honest</h2>
+
+      <h3>Money never becomes a float</h3>
+      <p>
+        At PHP 1.33 B, IEEE-754 doubles cannot represent centavos reliably. Amounts are
+        <code>DECIMAL(18,2)</code>, and <code>mysql2</code> returns them as strings — which is
+        left exactly as it is. Arithmetic happens in SQL, or in <code>decimal.js</code> when it
+        genuinely must happen in JS. No peso amount is ever <code>parseFloat</code>-ed and added
+        to another.
+      </p>
+
+      <h3>Aggregation lives in views, not in Node</h3>
+      <p>
+        Eleven views carry the reporting logic — <code>v_budget_vs_actual</code>,
+        <code>v_po_balance</code>, <code>v_planning_line_spend</code>,
+        <code>v_weekly_burn</code>, <code>v_po_retention</code>, <code>v_vat_component</code> and
+        five per-ledger roll-ups. Rows are never pulled into the application to be summed, which
+        keeps one definition of every total instead of one per endpoint.
+      </p>
+
+      <h3>Retention is not a payable</h3>
+      <p>
+        Eleven POs carry a holdback totalling <strong>PHP 25,319,221.48</strong> — the largest a
+        single PHP 12.78 M. That is money the supplier is not yet entitled to, so it gets its own
+        line rather than being folded into an outstanding balance. It also has to survive a trap
+        in the source: <em>"100% Upon Completion"</em> is a payment schedule, not a 100%
+        retention.
+      </p>
+
+      <h3>Budgets are revised by append, never by update</h3>
+      <p>
+        Two items are over budget — fire protection by 61%, bollards by 19% — and both will be
+        adjusted. Revisions are inserted into <code>budget_revisions</code> with before, after,
+        effective date and reason. Overwriting the figure in place would have made every past
+        variance unexplainable.
+      </p>
+    </div>
+  </section>
+
+  <!-- 7.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">7.0</div>
+      <div class="rail-label">Scope</div>
+    </div>
+    <div class="body">
+      <h2>What I deliberately did not build</h2>
+      <p>
+        One user, one project, one local machine. The main risk to a tool like this is not
+        technical difficulty — it is building the version that impresses instead of the version
+        that ships.
+      </p>
+
+      <ul class="scope">
+        <li>
+          <span class="mark">✕</span>
+          <span>Approval workflow
+            <span class="why">The Coordinator → SVP → CEO chain happens outside the app. It's a monitoring tool.</span>
+          </span>
+        </li>
+        <li>
+          <span class="mark">✕</span>
+          <span>Roles and permissions
+            <span class="why">One user. The users table is a username and a bcrypt hash.</span>
+          </span>
+        </li>
+        <li>
+          <span class="mark">✕</span>
+          <span>Multi-tenancy
+            <span class="why">The schema supports a second project; the UI does not, until there is one.</span>
+          </span>
+        </li>
+        <li>
+          <span class="mark">✕</span>
+          <span>Payroll calculation
+            <span class="why">Daily rates and DTR detail no longer exist in the source. The app records weekly net pay and says so.</span>
+          </span>
+        </li>
+        <li>
+          <span class="mark">✕</span>
+          <span>Foreign-currency features
+            <span class="why">FX columns exist because rates vary per payment — but no PO is currently held in foreign currency. Dormant until needed.</span>
+          </span>
+        </li>
+      </ul>
+
+      <p>
+        Sixteen runtime dependencies across both halves of the stack, total. Rollout is
+        deliberately unglamorous: the app and the spreadsheet run in parallel for two to four
+        weekly cycles before the sheet is retired.
+      </p>
+    </div>
+  </section>
+
+  <!-- 8.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">8.0</div>
+      <div class="rail-label">What shipped</div>
+    </div>
+    <div class="body">
+      <h2>The system, in numbers</h2>
+
+      <div class="metrics">
+        <div class="metric"><div class="v">22</div><div class="k">Tables</div></div>
+        <div class="metric"><div class="v">11</div><div class="k">Reporting views</div></div>
+        <div class="metric"><div class="v">71</div><div class="k">REST endpoints</div></div>
+        <div class="metric"><div class="v">12</div><div class="k">Screens</div></div>
+        <div class="metric"><div class="v">55</div><div class="k">React components</div></div>
+        <div class="metric"><div class="v">18</div><div class="k">Data hooks</div></div>
+        <div class="metric"><div class="v">17</div><div class="k">Versioned migrations</div></div>
+        <div class="metric"><div class="v">~18.7k</div><div class="k">Lines of code</div></div>
+      </div>
+
+      <h3>Screens</h3>
+      <p>
+        Overview (budget vs actual, KPIs, cost trend, weekly burn, alerts) · budget-item
+        drill-down with WBS tree · purchase orders with balance, retention panel, payment terms
+        and attachments · replenishment ledger · cash advances · additional payments · payroll by
+        period and by worker · suppliers.
+      </p>
+
+      <h3>The extractor</h3>
+      <p>
+        A 672-line Python script, standard library only, no dependencies. It parses
+        <code>content.xml</code> out of the <code>.ods</code> archives directly, because
+        <code>pandas.read_excel</code> cannot open these files at all — they contain
+        formula-error cells. It prints its own row counts, reconciliation and retention table on
+        every run, so the migration re-proves itself rather than being trusted from memory.
+      </p>
+
+      <h3>Operations</h3>
+      <p>
+        Backup endpoint and a scheduled PowerShell dump, an append-only <code>audit_log</code>
+        with <code>created_by</code> / <code>updated_by</code> on every write path, soft-delete
+        with a restore modal, and CSV export and print layouts on every ledger — because the
+        figures feed billing and someone will eventually ask who changed what.
+      </p>
+    </div>
+  </section>
+
+  <!-- 9.0 -->
+  <section class="section">
+    <div class="rail">
+      <div class="rail-no">9.0</div>
+      <div class="rail-label">Takeaway</div>
+    </div>
+    <div class="body">
+      <h2>The hard part was never the code</h2>
+      <p>
+        The build is a conventional CRUD dashboard, and deliberately so. What made it worth
+        doing was the four weeks of questions before it: what kind of money is this column,
+        why doesn't this total match, is this expense a contract increase or an expense, and
+        what should happen to the row nobody can explain.
+      </p>
+      <p>
+        Every answer became a constraint written down where the next person will trip over it —
+        a schema comment, a view, a picker instead of a text box, or a flagged row that refuses
+        to be quietly averaged away.
+      </p>
+
+      <h3>Stack</h3>
+      <div class="stack-grid">
+        <div>
+          <dt>Client</dt>
+          <dd>React 19 · Vite · TypeScript<br />TanStack Query · React Router<br />Tailwind v4 · Recharts<br />decimal.js · oxlint</dd>
+        </div>
+        <div>
+          <dt>Server</dt>
+          <dd>Node · Express<br />mysql2/promise (pooled)<br />express-session · bcryptjs<br />multer · decimal.js</dd>
+        </div>
+        <div>
+          <dt>Data</dt>
+          <dd>MySQL 8, ONLY_FULL_GROUP_BY<br />22 tables · 11 views<br />17 forward migrations<br />Python 3 stdlib ETL</dd>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <span>LedgerLab · Plaridel Extension cost &amp; payroll monitoring</span>
+    <span>Figures as at the August 2026 migration snapshot</span>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeToggle');
+    btn.addEventListener('click', function () {
+      var root = document.documentElement;
+      var current = root.getAttribute('data-theme');
+      if (!current) {
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        current = prefersDark ? 'dark' : 'light';
+      }
+      root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    });
+  })();
+</script>

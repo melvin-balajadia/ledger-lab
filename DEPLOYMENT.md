@@ -239,6 +239,102 @@ mysql -u root -p rcsni_cost < backups\rcsni_cost_2026-08-04_1800.sql
 
 ---
 
+## 8. Running a second site (e.g. Villasis)
+
+This app now supports more than one independent deployment of the same
+codebase — one per site, each with its own database, its own port, and no
+shared state between them. `schema.sql` already seeds both projects the
+schema was designed around: `PLAEX` (Plaridel Extension, id 1) and `DSEXP`
+(Dry Storage Expansion / Villasis, Pangasinan, id 2), with their real,
+accounting-confirmed company/location/TIN. Each site's deployment picks
+which one it points at.
+
+What that means concretely, once both sites run on the same PC:
+
+| Layer | Count | Detail |
+|---|---|---|
+| GitHub repo | **one** (`ledger-lab`) | same origin, same commit history, both sites pull from it |
+| Folder / git checkout | **two** | e.g. `C:\Plaridel\plaridel-dashboard` and `C:\Villasis\villasis-dashboard` — two clones of that one repo |
+| Database | **two** | `rcsni_cost` and `rcsni_villasis`, both on the same local MySQL server |
+| Node/Express process | **two** | each folder's own `node index.js`, on its own port (4000 / 4001) |
+| Desktop shortcut | **two** | `start-plaridel.bat` and `start-villasis.bat`, one per site |
+
+Not two GitHub repos (that forks the codebase — a bug fix wouldn't reach both
+sites automatically) and not one folder trying to serve both (that's exactly
+why `site.config.ts` and both `.env` files are gitignored per checkout —
+see below).
+
+**The one file to edit per site, frontend side:** copy
+`client/src/site.config.example.ts` to `client/src/site.config.ts` (this file
+is gitignored, same reason `.env` is right next to it — every checkout needs
+its own values, and if it were a tracked file, `git pull`-ing shared code
+fixes into either site would fight over the other site's `PROJECT_ID`/
+branding) and fill in this site's values:
+
+```ts
+export const PROJECT_ID = 2;                          // DSEXP for Villasis
+export const SITE_NAME = 'Villasis';
+export const SITE_TITLE = 'Royale Cold Storage — Villasis';
+```
+
+Every other frontend file (`Layout.tsx`, `Login.tsx`, the browser tab title,
+every data hook) reads from it — nothing else needs touching for a new site.
+
+**Steps for a new site, start to finish:**
+
+1. **Clone the same repo** into its own folder — don't create a second
+   GitHub repo, and don't reuse Plaridel's working copy as a branch:
+   ```powershell
+   git clone https://github.com/melvin-balajadia/ledger-lab.git C:\Villasis\villasis-dashboard
+   ```
+   One repo, one commit history — a bug fix pushed from either site's
+   checkout is a plain `git pull` away in the other. `site.config.ts` and
+   both `.env` files are gitignored, so pulling shared code never touches
+   either site's own identity/credentials.
+2. **Create a separate database.** `schema.sql` hardcodes the database name
+   `rcsni_cost` in its `CREATE DATABASE`/`USE` lines — don't edit the file,
+   substitute the name at import time instead:
+   ```powershell
+   (Get-Content db\schema.sql) -replace 'rcsni_cost','rcsni_villasis' | mysql -u root -p
+   ```
+3. **Import the seed-only master data** — `db/seed_master_data.sql`. It
+   removes Plaridel's project row and its 20 budget_items (this deployment
+   has no business carrying Plaridel's budget figures) and the Plaridel-only
+   FX rates, then loads `users` (same login as this deployment — same user),
+   `suppliers` (the existing 324-name list), and `planning_lines` (this
+   site's starting JPL codes, re-pointed at `project_id = 2`):
+   ```powershell
+   mysql -u root -p rcsni_villasis < db\seed_master_data.sql
+   ```
+   Read the comment block at the top of that file — it explains exactly what
+   it does and why (including why `budget_item_id` comes across as `NULL`).
+   Regenerate it later with `mysqldump --no-create-info` if you need a fresh
+   snapshot of `users`/`suppliers`/`planning_lines`.
+4. **`server/.env`** in the new folder — its own `DB_NAME=rcsni_villasis`,
+   its own `PORT` (e.g. `4001`, since both sites may run on the same
+   machine), its own `SESSION_SECRET`.
+5. **`client/.env`** — `VITE_API_URL` pointing at that port.
+6. **`client/src/site.config.ts`** — copy from `site.config.example.ts` (see
+   above) and set `PROJECT_ID = 2`, plus `SITE_NAME`/`SITE_TITLE`.
+7. **`scripts/start-villasis.bat`** — already in the repo (tracked, so it
+   arrived with the clone in step 1), a copy of `start-plaridel.bat` with the
+   title and the `start http://localhost:4001` line changed to match. The
+   `cd /d "%~dp0..\server"` line needs no edit — it's relative to the batch
+   file's own location, so it already resolves to *this* checkout's
+   `server/`. Point her desktop shortcut at this file instead of
+   `start-plaridel.bat`.
+8. Follow sections 1d–7 above (build, service, backups, handoff) exactly as
+   for the first site, just in the new folder against the new database/port — using
+   `start-villasis.bat` in place of `start-plaridel.bat` in section 4, and
+   `http://localhost:4001` in place of `:4000` in sections 4 and 5.
+
+Result: two fully independent instances, same repo, no cross-talk. A third
+site later repeats steps 1–7 with a new database name, port, its own
+`site.config.ts` (from the example), and a new `.bat` script (copy
+`start-villasis.bat`, change the title and port) — nothing else changes.
+
+---
+
 ## If she ever needs it from a second machine
 
 Bind Express to `0.0.0.0`, open the port in Windows Firewall, and she reaches it

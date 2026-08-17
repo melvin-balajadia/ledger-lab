@@ -13,6 +13,12 @@ dist-ssr
 *.local
 .env
 
+# per-deployment site identity -- same reason .env is gitignored above:
+# every checkout (Plaridel, Villasis, ...) needs its own values, and if this
+# were tracked, a `git pull` in one site's checkout would fight over the
+# other site's PROJECT_ID/branding. Copy site.config.example.ts to create it.
+src/site.config.ts
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
