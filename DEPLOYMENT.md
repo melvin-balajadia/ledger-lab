@@ -297,15 +297,42 @@ every data hook) reads from it — nothing else needs touching for a new site.
    ```powershell
    (Get-Content db\schema.sql) -replace 'rcsni_cost','rcsni_villasis' | mysql -u root -p
    ```
+   **Using MySQL Workbench instead of the command line:** Workbench's
+   import/restore has no text-substitution option like the PowerShell command
+   above, so make a throwaway edited copy first — copy `db\schema.sql`
+   somewhere temporary (e.g. `db\schema_villasis_temp.sql`), open it in
+   Notepad, replace both occurrences of `rcsni_cost` near the top (the
+   `CREATE DATABASE` and `USE` lines) with `rcsni_villasis`, save. Then in
+   Workbench: **File → Open SQL Script...** → select that temp copy → click
+   the lightning-bolt **Execute** icon. Because the script itself contains
+   `CREATE DATABASE`/`USE`, you don't need to create a schema or set a
+   default target schema first — same reason the self-contained data-import
+   file in step 1b above doesn't need one. Delete the temp copy afterward —
+   it's scratch, not part of the repo.
 3. **Import the seed-only master data** — `db/seed_master_data.sql`. It
-   removes Plaridel's project row and its 20 budget_items (this deployment
-   has no business carrying Plaridel's budget figures) and the Plaridel-only
-   FX rates, then loads `users` (same login as this deployment — same user),
-   `suppliers` (the existing 324-name list), and `planning_lines` (this
-   site's starting JPL codes, re-pointed at `project_id = 2`):
+   removes Plaridel's project row, its 20 budget_items and the Plaridel-only
+   FX rates (this deployment has no business carrying Plaridel's figures),
+   then loads `users` (same login as this deployment — same user),
+   `suppliers` (the existing 324-name list), `planning_lines` (this site's
+   starting JPL codes, re-pointed at `project_id = 2`) and this site's own
+   20 `budget_items` — same item numbers and labels as Plaridel's so both
+   sites share one WBS breakdown, but every amount `0`, for accounting to
+   fill in herself in the app. It finishes by pointing every JPL code at the
+   budget item its first segment names; **don't remove that step**, the
+   roll-up views key every reported figure off it:
    ```powershell
    mysql -u root -p rcsni_villasis < db\seed_master_data.sql
    ```
+   **Using MySQL Workbench instead of the command line:** unlike
+   `schema.sql`, this file has no `CREATE DATABASE`/`USE` line — it's meant
+   to run against whichever schema is already selected. In the **Schemas**
+   panel on the left, double-click `rcsni_villasis` to make it the active
+   schema (it becomes **bold**). Then **File → Open SQL Script...** → select
+   `db\seed_master_data.sql` → click **Execute**. Skipping the double-click
+   step is the one way this goes wrong — you'd get `ERROR 1046: No database
+   selected` or, worse, silently run it against whatever schema was already
+   active (don't run it against `rcsni_cost` — see the warning at the top of
+   that file).
    Read the comment block at the top of that file — it explains exactly what
    it does and why (including why `budget_item_id` comes across as `NULL`).
    Regenerate it later with `mysqldump --no-create-info` if you need a fresh

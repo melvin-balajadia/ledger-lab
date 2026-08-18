@@ -24,14 +24,32 @@ const CSV_COLUMNS: CsvColumn<BudgetSummaryRow>[] = [
 export function BudgetTable({
   rows,
   onSelect,
+  onCreate,
 }: {
+  onCreate?: () => void;
   onSelect?: (row: BudgetSummaryRow) => void;
   rows: BudgetSummaryRow[];
 }) {
   return (
     <Panel
       title="Budget vs. actual"
-      action={<ExportButton rows={rows} columns={CSV_COLUMNS} filename="budget-vs-actual" />}
+      action={
+        <div className="flex items-center gap-2">
+          <ExportButton rows={rows} columns={CSV_COLUMNS} filename="budget-vs-actual" />
+          {/* This is the only screen listing every budget item, so it's where
+              adding one belongs -- print:hidden because it's a control, not
+              content (same reason the Overview's print button is excluded). */}
+          {onCreate && (
+            <button
+              type="button"
+              onClick={onCreate}
+              className="rounded-sm border border-rule-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-canvas print:hidden"
+            >
+              + New budget item
+            </button>
+          )}
+        </div>
+      }
       bodyClassName="overflow-x-auto"
     >
       {/* table-layout: fixed + explicit col widths -- with the default auto

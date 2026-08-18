@@ -391,6 +391,29 @@ export interface RevisionInput {
   approved_by: string;
 }
 
+export interface BudgetItemInput {
+  item_no: string;
+  description: string;
+  original_budget: string;
+  contract_amount: string;
+  procurement_mode?: string;
+  remarks?: string | null;
+}
+
+// original_budget and revised_budget are sent together, from one "Budget"
+// input: while no revision is logged they are equal by construction (the seed
+// and the create endpoint both set both), and the server rejects a baseline
+// edit once one exists -- at which point original_budget correctly stays
+// frozen at the pre-revision figure and revisions own the number.
+export interface BudgetItemPatch {
+  description?: string;
+  original_budget?: string;
+  revised_budget?: string;
+  contract_amount?: string;
+  procurement_mode?: string;
+  remarks?: string | null;
+}
+
 export interface AuthUser {
   username: string;
   full_name: string | null;

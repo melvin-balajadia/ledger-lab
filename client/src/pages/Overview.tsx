@@ -14,14 +14,25 @@ import { WeeklyBurnPanel } from '../components/WeeklyBurnPanel';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Panel } from '../components/Panel';
 import { PrintOptionsModal } from '../components/PrintOptionsModal';
+import { BudgetItemForm } from '../components/BudgetItemForm';
+import { Modal } from '../components/Modal';
 import { IconPrinter } from '../components/icons';
 import { loadExcluded, saveExcluded, type PrintSectionKey } from '../lib/printSections';
+import type { BudgetSummaryRow } from '../types';
 
 const TREND_WINDOW_OPTIONS: { label: string; value: '6' | '12' | '24' }[] = [
   { label: '6M', value: '6' },
   { label: '12M', value: '12' },
   { label: '24M', value: '24' },
 ];
+
+// Next free "<n>.0" -- item_no must take that shape (a JPL code resolves to its
+// item by first segment), and it's unique per project, so pre-filling the next
+// one removes both the format guess and the collision.
+function nextItemNo(rows: BudgetSummaryRow[]) {
+  const highest = rows.reduce((max, row) => Math.max(max, Number(row.item_no.split('.')[0]) || 0), 0);
+  return `${highest + 1}.0`;
+}
 
 // Wrapper rather than a prop on each panel: only print visibility changes, so
 // nothing needs to unmount and the on-screen page is untouched.
@@ -42,6 +53,7 @@ export function Overview() {
   const topSuppliers = useTopSuppliers(10);
 
   const [showPrintOptions, setShowPrintOptions] = useState(false);
+  const [showNewBudgetItem, setShowNewBudgetItem] = useState(false);
   const [excluded, setExcluded] = useState<Set<PrintSectionKey>>(loadExcluded);
   const shows = (key: PrintSectionKey) => !excluded.has(key);
 
@@ -130,7 +142,11 @@ export function Overview() {
           </Section>
 
           <Section show={shows('budget')}>
-            <BudgetTable rows={summary.data} onSelect={(row) => navigate(`/budget-items/${row.budget_item_id}`)} />
+            <BudgetTable
+              rows={summary.data}
+              onSelect={(row) => navigate(`/budget-items/${row.budget_item_id}`)}
+              onCreate={() => setShowNewBudgetItem(true)}
+            />
           </Section>
 
           {retention.data && (
@@ -157,6 +173,15 @@ export function Overview() {
               </Panel>
             </Section>
           </div>
+
+          {showNewBudgetItem && (
+            <Modal title="New budget item" onClose={() => setShowNewBudgetItem(false)}>
+              <BudgetItemForm
+                suggestedItemNo={nextItemNo(summary.data)}
+                onClose={() => setShowNewBudgetItem(false)}
+              />
+            </Modal>
+          )}
 
           {showPrintOptions && (
             <PrintOptionsModal

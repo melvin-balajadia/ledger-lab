@@ -30,7 +30,10 @@ router.post('/login', async (req, res, next) => {
 router.post('/logout', (req, res, next) => {
   req.session.destroy((err) => {
     if (err) return next(err);
-    res.clearCookie('connect.sid');
+    // Must match the name index.js gives the session cookie, or logout leaves a
+    // stale cookie in the browser (harmless -- destroy() already killed the
+    // server-side session -- but it never gets cleaned up).
+    res.clearCookie(process.env.SESSION_COOKIE_NAME || 'connect.sid');
     res.json({});
   });
 });

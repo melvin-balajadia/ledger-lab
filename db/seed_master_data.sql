@@ -23,27 +23,37 @@
 -- this deployment (DSEXP is id 2, not 1 -- Plaridel occupies id 1 in
 -- schema.sql's own seed).
 --
--- After cleanup, this file adds ONLY:
+-- After cleanup, this file adds:
 --   - users            (same login/password as this deployment -- same user)
 --   - suppliers        (global master list, no project_id)
 --   - planning_lines   (this site's starting JPL/WBS code list, re-pointed
 --                       at project_id=2)
+--   - budget_items     (same 20 lines/labels as Plaridel, project_id=2, every
+--                       amount 0 -- accounting fills in Villasis's real figures
+--                       herself once entered; see the comment further down,
+--                       right before the INSERT, for why these are placeholders)
 --
--- Everything else (budget_items, purchase_orders, replenishments,
--- payroll, ...) stays empty -- fresh start.
+-- Everything else (purchase_orders, replenishments, payroll, ...) stays
+-- empty -- fresh start.
 --
--- planning_lines.budget_item_id is set to NULL here on purpose. It only
--- ever gets assigned once, by the original data import, and this site's
--- budget_items will get different ids -- nothing live in the app
--- re-resolves this column, so a copied value would just be a dangling
--- reference. It has no effect on JPL code display or the WBS tree; only
--- on grouping the tree by top-level budget item, until this site's own
--- budget items are entered and the codes re-linked.
+-- planning_lines rows carry budget_item_id = NULL in the dump below --
+-- Plaridel's ids mean nothing in this database -- and get re-pointed at
+-- THIS site's budget_items by the UPDATE at the bottom of this file, after
+-- those items are inserted. Do not "simplify" that UPDATE away: the
+-- roll-up views key every reported figure off this column. See the comment
+-- above it for what breaks.
 --
 -- One row was dropped from planning_lines: a manually-entered test row
 -- (code '2.40.1', description 'Sample') created while trying out the
 -- entry form -- not real master data.
 -- =====================================================================
+
+-- MySQL Workbench's "Safe Updates" mode rejects a DELETE unless its WHERE
+-- clause is a literal comparison against a key column -- a subquery (like
+-- budget_items below) or no WHERE at all (fx_rates below) both trip it with
+-- Error 1175. Disabling it for this session avoids a Workbench preference
+-- change; SQL_MODE/etc. below are restored at the end of the file regardless.
+SET SQL_SAFE_UPDATES = 0;
 
 DELETE FROM budget_items WHERE project_id = (SELECT id FROM projects WHERE code = 'PLAEX');
 DELETE FROM projects WHERE code = 'PLAEX';
@@ -545,6 +555,64 @@ INSERT INTO `planning_lines` (`id`, `project_id`, `budget_item_id`, `code`, `par
 INSERT INTO `planning_lines` (`id`, `project_id`, `budget_item_id`, `code`, `parent_id`, `depth`, `description`, `budget_amount`, `is_active`, `created_by`, `updated_by`, `updated_at`) VALUES (128,2,NULL,'18.25',NULL,2,NULL,NULL,1,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `planning_lines` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Hand-authored (not from mysqldump): this site's 20 budget_items, same
+-- item_no/description/sort_order as Plaridel's (schema.sql line ~762) so both
+-- sites use the same WBS breakdown, but every amount is 0 -- accounting
+-- enters this site's real figures herself, in the app (Overview -> "+ New
+-- budget item", or a budget item's own page to set its baseline). Until she
+-- does, these are placeholder rows, not real budget data -- a 0 here means
+-- "not entered yet", not "no budget".
+--
+-- item_no must stay '<n>.0': deriveFromCode() resolves a JPL code to its
+-- budget item by matching the code's first segment against this string.
+--
+INSERT INTO budget_items
+  (project_id, item_no, sort_order, description, original_budget, revised_budget, contract_amount, procurement_mode, remarks)
+VALUES
+  (2,'1.0', 10,'Inauguration / Groundbreaking',                                              0,0,0,'other',NULL),
+  (2,'2.0', 20,'Land Development',                                                           0,0,0,'other',NULL),
+  (2,'3.0', 30,'Civil Works',                                                                0,0,0,'other',NULL),
+  (2,'4.0', 40,'Refrigeration Equipment',                                                    0,0,0,'other',NULL),
+  (2,'5.0', 50,'Insulated Panels, Sectional Door, Dock Levelers & Accessories',              0,0,0,'other',NULL),
+  (2,'6.0', 60,'Electrical & Communications Works',                                          0,0,0,'other',NULL),
+  (2,'7.0', 70,'PU Flooring, Coving and Zocalo',                                             0,0,0,'other',NULL),
+  (2,'8.0', 80,'Water Distribution',                                                         0,0,0,'other',NULL),
+  (2,'9.0', 90,'Office Equipment, Furniture & Fixtures',                                     0,0,0,'other',NULL),
+  (2,'10.0',100,'Plastic Pallets',                                                           0,0,0,'other',NULL),
+  (2,'11.0',110,'Double Deep Racking System',                                                0,0,0,'other',NULL),
+  (2,'12.0',120,'MHE',                                                                       0,0,0,'other',NULL),
+  (2,'13.0',130,'Solar PV System',                                                           0,0,0,'other',NULL),
+  (2,'14.0',140,'Fire Protection',                                                           0,0,0,'other',NULL),
+  (2,'15.0',150,'WWTP',                                                                      0,0,0,'other',NULL),
+  (2,'16.0',160,'Water Filtration System',                                                   0,0,0,'other',NULL),
+  (2,'17.0',170,'Bollards',                                                                  0,0,0,'other',NULL),
+  (2,'18.0',180,'Capex for Operations',                                                      0,0,0,'other',NULL),
+  (2,'19.0',190,'Interest During Construction',                                              0,0,0,'other',NULL),
+  (2,'20.0',200,'Other Expenses',                                                            0,0,0,'other',NULL);
+
+--
+-- Point every seeded JPL code at the budget item its first segment names --
+-- '18.25' -> item_no '18.0'. Same rule as deriveFromCode() in
+-- server/routes/planningLines.js, which is what a code created through the UI
+-- goes through, so both paths resolve identically.
+--
+-- This is not cosmetic. Every transaction copies budget_item_id off the
+-- planning line it is charged to (see ReplenishmentForm.tsx -> the
+-- budget_item_id column on replenishments/cash_advances/payroll_entries/...),
+-- and all five *_by_item roll-up views GROUP BY that column. Left NULL, every
+-- amount entered rolls up to nothing: total_disbursed stays 0 on all 20 items
+-- and the dashboard reports zero spend forever, with no error anywhere.
+--
+UPDATE planning_lines pl
+JOIN budget_items bi
+  ON bi.project_id = pl.project_id
+ AND bi.item_no = CONCAT(SUBSTRING_INDEX(pl.code, '.', 1), '.0')
+SET pl.budget_item_id = bi.id
+WHERE pl.project_id = 2
+  AND pl.budget_item_id IS NULL;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -557,3 +625,4 @@ UNLOCK TABLES;
 
 -- Dump completed on 2026-08-17 22:04:42
 SET FOREIGN_KEY_CHECKS = 1;
+SET SQL_SAFE_UPDATES = 1;

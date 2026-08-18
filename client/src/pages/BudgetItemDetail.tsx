@@ -79,8 +79,12 @@ export function BudgetItemDetail() {
             <BudgetItemDetailsForm
               key={budgetItemId}
               budgetItemId={budgetItemId}
+              description={item.description}
+              budget={item.budget}
+              contractAmount={item.contract_amount}
               procurementMode={item.procurement_mode}
               remarks={item.remarks}
+              revisionCount={item.revision_count}
             />
           </section>
 
