@@ -81,6 +81,7 @@ export interface ReplenishmentSummary {
   row_count: number;
   total_amount: string;
   needs_review_count: number;
+  needs_review_amount: string;
   by_budget_item: BudgetItemJplTotal[];
 }
 

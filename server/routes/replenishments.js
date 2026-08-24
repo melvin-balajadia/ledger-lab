@@ -54,6 +54,17 @@ async function assertPlanningLinesActive(conn, planningLineIds) {
   return null;
 }
 
+// budget_item_id is never taken from the client -- planning_lines.budget_item_id
+// ("resolved from the code's first segment", see schema.sql) is the only
+// source of truth, so a JPL code and its budget item can never drift apart
+// regardless of what a caller sends. Same helper as payroll.js; the drift it
+// prevents is exactly what db/migrations/019 had to repair.
+async function resolveBudgetItemId(conn, planningLineId) {
+  if (planningLineId == null) return null;
+  const [rows] = await conn.query('SELECT budget_item_id FROM planning_lines WHERE id = ?', [planningLineId]);
+  return rows[0]?.budget_item_id ?? null;
+}
+
 function mapDbError(err) {
   if (err.errno === 1452) {
     return { status: 400, message: 'supplier_id or budget_item_id does not exist' };
@@ -127,7 +138,8 @@ router.get('/:id/replenishments', async (req, res, next) => {
     // always match what's currently filtered/visible.
     const [[summaryRow]] = await pool.query(
       `SELECT COUNT(*) AS row_count, COALESCE(SUM(r.amount), 0) AS total_amount,
-              SUM(CASE WHEN r.needs_review = 1 THEN 1 ELSE 0 END) AS needs_review_count
+              SUM(CASE WHEN r.needs_review = 1 THEN 1 ELSE 0 END) AS needs_review_count,
+              COALESCE(SUM(CASE WHEN r.needs_review = 1 THEN r.amount END), 0) AS needs_review_amount
        FROM replenishments r WHERE ${whereSql}`,
       params
     );
@@ -151,6 +163,11 @@ router.get('/:id/replenishments', async (req, res, next) => {
       row_count: summaryRow.row_count,
       total_amount: summaryRow.total_amount,
       needs_review_count: Number(summaryRow.needs_review_count),
+      // Total (filtered) matches the table below it, flagged rows included.
+      // v_replen_by_item (the Overview's source) excludes needs_review = 1,
+      // so this is exactly the gap between the two screens -- surfaced
+      // rather than left as an unexplained difference.
+      needs_review_amount: summaryRow.needs_review_amount,
       by_budget_item: byBudgetItem,
     };
     const [rows] = await pool.query(
@@ -229,7 +246,7 @@ router.post('/:id/replenishments', async (req, res, next) => {
           line.txn_date,
           line.supplier_id || null,
           line.planning_line_id || null,
-          line.budget_item_id || null,
+          await resolveBudgetItemId(conn, line.planning_line_id || null),
           line.item_description || null,
           line.ref_no || null,
           line.ref_type || null,
@@ -276,8 +293,10 @@ router.patch('/:id/replenishments/:repId', async (req, res, next) => {
     }
     const before = existingRows[0];
 
+    // budget_item_id is deliberately NOT editable -- it is derived from
+    // planning_line_id below, never accepted from the client.
     const editable = [
-      'txn_date', 'supplier_id', 'planning_line_id', 'budget_item_id',
+      'txn_date', 'supplier_id', 'planning_line_id',
       'item_description', 'ref_no', 'ref_type', 'amount', 'document_no', 'needs_review',
     ];
     const merged = { ...before };
@@ -309,6 +328,7 @@ router.patch('/:id/replenishments/:repId', async (req, res, next) => {
     }
 
     const appUser = req.session.username;
+    merged.budget_item_id = await resolveBudgetItemId(conn, merged.planning_line_id);
     await conn.query(
       `UPDATE replenishments SET
          txn_date = ?, supplier_id = ?, planning_line_id = ?, budget_item_id = ?,

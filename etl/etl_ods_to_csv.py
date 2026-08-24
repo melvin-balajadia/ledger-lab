@@ -257,11 +257,15 @@ class Registry:
 
 
 ITEM_NOS = ['1.0','2.0','3.0','4.0','5.0','6.0','7.0','8.0','9.0','10.0',
-            '11.0','12.0','13.0','14.0','15.0','16.0','17.0','18.0','19.0']
-ITEM_ID = {n: i + 1 for i, n in enumerate(ITEM_NOS)}   # must match schema.sql seed order
-# schema seeds 2.0..19.0 first then 1.0; recompute to match that exactly:
-_seed_order = ITEM_NOS[1:] + ['1.0']
-ITEM_ID = {n: i + 1 for i, n in enumerate(_seed_order)}
+            '11.0','12.0','13.0','14.0','15.0','16.0','17.0','18.0','19.0','20.0']
+# Must match schema.sql's budget_items seed, which inserts 1.0 .. 20.0 in
+# natural order -- so id N is item N.0. An earlier version of this map
+# reordered to "2.0..19.0 first, then 1.0" on the belief that the schema
+# seeded it that way; it does not, and that shifted every JPL-derived
+# budget_item_id down by one (code 3.x -> item '2.0') while mapping code
+# 1.x -> '19.0'. See db/migrations/019 for the repair of the data it wrote.
+# '20.0' was also missing entirely, leaving code 20.x rows with no item.
+ITEM_ID = {n: i + 1 for i, n in enumerate(ITEM_NOS)}
 
 
 def item_id_for_jpl(code):

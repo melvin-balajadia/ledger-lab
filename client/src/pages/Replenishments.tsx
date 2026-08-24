@@ -144,6 +144,19 @@ export function Replenishments() {
               value: summary.needs_review_count.toLocaleString(),
               tone: summary.needs_review_count > 0 ? 'warn' : undefined,
             },
+            // Only shown when there is actually a gap to explain. The
+            // Overview's actuals come from v_replen_by_item, which excludes
+            // needs_review rows -- without this the two screens differ by an
+            // unexplained amount.
+            ...(Number(summary.needs_review_amount) > 0
+              ? [
+                  {
+                    label: 'Excluded from Overview',
+                    value: formatMoney(summary.needs_review_amount),
+                    tone: 'warn' as const,
+                  },
+                ]
+              : []),
           ]}
         />
       )}

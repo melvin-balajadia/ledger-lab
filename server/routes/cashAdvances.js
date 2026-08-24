@@ -65,6 +65,17 @@ async function assertPlanningLinesActive(conn, planningLineIds) {
   return null;
 }
 
+// budget_item_id is never taken from the client -- planning_lines.budget_item_id
+// ("resolved from the code's first segment", see schema.sql) is the only
+// source of truth, so a JPL code and its budget item can never drift apart
+// regardless of what a caller sends. Same helper as payroll.js; the drift it
+// prevents is exactly what db/migrations/019 had to repair.
+async function resolveBudgetItemId(conn, planningLineId) {
+  if (planningLineId == null) return null;
+  const [rows] = await conn.query('SELECT budget_item_id FROM planning_lines WHERE id = ?', [planningLineId]);
+  return rows[0]?.budget_item_id ?? null;
+}
+
 function mapDbError(err) {
   if (err.errno === 1452) {
     return { status: 400, message: 'budget_item_id does not exist' };
@@ -239,7 +250,7 @@ router.post('/:id/cash-advances', async (req, res, next) => {
           projectId,
           line.txn_date,
           line.planning_line_id || null,
-          line.budget_item_id || null,
+          await resolveBudgetItemId(conn, line.planning_line_id || null),
           line.requested_by || null,
           line.purpose || null,
           line.amount,
@@ -286,8 +297,10 @@ router.patch('/:id/cash-advances/:caId', async (req, res, next) => {
     }
     const before = existingRows[0];
 
+    // budget_item_id is deliberately NOT editable -- it is derived from
+    // planning_line_id below, never accepted from the client.
     const editable = [
-      'txn_date', 'planning_line_id', 'budget_item_id', 'requested_by', 'purpose',
+      'txn_date', 'planning_line_id', 'requested_by', 'purpose',
       'amount', 'liquidated_amount', 'status', 'document_no', 'control_no',
       'liquidation_control_no', 'needs_review',
     ];
@@ -320,6 +333,7 @@ router.patch('/:id/cash-advances/:caId', async (req, res, next) => {
     }
 
     const appUser = req.session.username;
+    merged.budget_item_id = await resolveBudgetItemId(conn, merged.planning_line_id);
     await conn.query(
       `UPDATE cash_advances SET
          txn_date = ?, planning_line_id = ?, budget_item_id = ?, requested_by = ?, purpose = ?,
