@@ -7,7 +7,15 @@ import type { BudgetItemGroup } from '../lib/budgetItemGrouping';
 // to a single un-expandable row; one spanning several codes under the same
 // item (e.g. 3.1.1 and 3.1.2, both "Civil Works") keeps that split visible
 // instead of folding it into one number.
-export function BudgetItemBreakdown({ groups, title = 'By budget item' }: { groups: BudgetItemGroup[]; title?: string }) {
+export function BudgetItemBreakdown({
+  groups,
+  title = 'By budget item',
+  onUnassignedClick,
+}: {
+  groups: BudgetItemGroup[];
+  title?: string;
+  onUnassignedClick?: () => void;
+}) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (groups.length === 0) return null;
@@ -28,15 +36,16 @@ export function BudgetItemBreakdown({ groups, title = 'By budget item' }: { grou
       </div>
       <div className="divide-y divide-rule">
         {groups.map((g) => {
-          const expandable = g.codes.length > 1;
+          const isUnassignedLink = g.key === 'unassigned' && !!onUnassignedClick;
+          const expandable = !isUnassignedLink && g.codes.length > 1;
           const isOpen = expandable && expanded.has(g.key);
           return (
             <div key={g.key}>
               <button
                 type="button"
-                onClick={expandable ? () => toggle(g.key) : undefined}
+                onClick={isUnassignedLink ? onUnassignedClick : expandable ? () => toggle(g.key) : undefined}
                 className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left ${
-                  expandable ? 'hover:bg-surface-2' : 'cursor-default'
+                  expandable || isUnassignedLink ? 'hover:bg-surface-2' : 'cursor-default'
                 }`}
               >
                 <span className="flex items-center gap-2 text-sm text-ink">
@@ -47,6 +56,7 @@ export function BudgetItemBreakdown({ groups, title = 'By budget item' }: { grou
                   )}
                   {!expandable && <span className="w-3.5 shrink-0" />}
                   {g.label}
+                  {isUnassignedLink && <span className="text-xs font-medium text-accent underline">Review & assign</span>}
                 </span>
                 <span className="font-mono text-sm font-semibold text-ink tabular-nums">{formatMoney(g.total)}</span>
               </button>

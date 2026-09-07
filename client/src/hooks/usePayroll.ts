@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteRequest, fetchJson, patchJson, postJson } from '../lib/api';
-import type { CopyRosterSource, PayrollEntry, PayrollPeriod, PayrollPeriodListResponse, PayrollWorkflowStatus } from '../types';
+import type {
+  CopyRosterSource,
+  PayrollEntry,
+  PayrollPeriod,
+  PayrollPeriodListResponse,
+  PayrollWorkflowStatus,
+  UnassignedPayrollEntry,
+} from '../types';
 import { PROJECT_ID } from './useProjectData';
 
 export function usePayrollPeriod(periodId: number | null) {
@@ -40,6 +47,20 @@ export function useNextPeriodSuggestion(enabled: boolean) {
 function invalidatePeriod(queryClient: ReturnType<typeof useQueryClient>, periodId: number) {
   queryClient.invalidateQueries({ queryKey: ['payroll-period', PROJECT_ID, periodId] });
   queryClient.invalidateQueries({ queryKey: ['payroll-entries', PROJECT_ID, periodId] });
+  // Any entry edit/add/delete can move a row in or out of the unassigned
+  // bucket -- distinct query key (periodId is never 'unassigned'), so it
+  // needs its own explicit invalidation rather than falling under the one above.
+  queryClient.invalidateQueries({ queryKey: ['payroll-entries', PROJECT_ID, 'unassigned'] });
+}
+
+// Cross-period on purpose -- she fixes these from one place (the "Unassigned"
+// row in the By-budget-item panel), not by hunting through each week.
+export function useUnassignedPayrollEntries(enabled: boolean) {
+  return useQuery({
+    queryKey: ['payroll-entries', PROJECT_ID, 'unassigned'],
+    queryFn: () => fetchJson<UnassignedPayrollEntry[]>(`/api/projects/${PROJECT_ID}/payroll-entries/unassigned`),
+    enabled,
+  });
 }
 
 export function useCreatePayrollPeriod() {

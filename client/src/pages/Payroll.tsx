@@ -16,6 +16,7 @@ import { StatusPill } from '../components/StatusPill';
 import { SummaryStats } from '../components/SummaryStats';
 import { ReconciliationBadge } from '../components/ReconciliationBadge';
 import { BudgetItemBreakdown } from '../components/BudgetItemBreakdown';
+import { UnassignedPayrollEntriesModal } from '../components/UnassignedPayrollEntriesModal';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Tone } from '../lib/tones';
@@ -118,6 +119,8 @@ export function Payroll() {
   const [workerModal, setWorkerModal] = useState<'create' | Worker | null>(null);
   const [workerRefreshKey, setWorkerRefreshKey] = useState(0);
   const [showNewPeriod, setShowNewPeriod] = useState(false);
+  const [showUnassigned, setShowUnassigned] = useState(false);
+  const [periodsRefreshKey, setPeriodsRefreshKey] = useState(0);
   const [periodSummary, setPeriodSummary] = useState<PayrollPeriodSummary | null>(null);
   const [workerSummary, setWorkerSummary] = useState<WorkerSummary | null>(null);
   // Distinct prefixes -- "By Week" and "By Worker" are two separate
@@ -259,7 +262,7 @@ export function Payroll() {
             />
           )}
 
-          <BudgetItemBreakdown groups={budgetItemGroups} />
+          <BudgetItemBreakdown groups={budgetItemGroups} onUnassignedClick={() => setShowUnassigned(true)} />
 
           <SegmentedControl
             value={attentionOnly}
@@ -281,6 +284,7 @@ export function Payroll() {
             perPageOptions={[10, 25, 50, 100]}
             searchPlaceholder="Search week label…"
             emptyMessage="No payroll periods match these filters."
+            refreshKey={periodsRefreshKey}
             initialState={buildPeriodsFetchParams()}
           />
         </>
@@ -336,6 +340,18 @@ export function Payroll() {
             onCreated={(created) => navigate(`/payroll/${created.id}`)}
           />
         </Modal>
+      )}
+
+      {showUnassigned && (
+        <UnassignedPayrollEntriesModal
+          onClose={() => {
+            setShowUnassigned(false);
+            // Assignments made inside the modal happen via react-query
+            // mutations; this table is fetched with a plain callback, so it
+            // needs its own nudge to pick up the new totals.
+            setPeriodsRefreshKey((k) => k + 1);
+          }}
+        />
       )}
     </div>
   );

@@ -113,6 +113,29 @@ const PERIODS_DERIVED_SQL = `
   GROUP BY pp.id, pp.label, pp.period_start, pp.period_end, pp.status, pp.total_amount
 `;
 
+// Cross-period, unlike every other entries route here -- she needs to see
+// and clear these regardless of which week's page she's on. Unfiltered by
+// the periods list's own date/status filters on purpose: a stray unassigned
+// entry from a month back is exactly the kind she'd otherwise never notice.
+router.get('/:id/payroll-entries/unassigned', async (req, res, next) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT pe.id, pe.payroll_period_id, pp.label AS period_label,
+              pe.worker_id, w.full_name AS worker_name, w.position,
+              pe.planning_line_id, pe.amount
+       FROM payroll_entries pe
+       JOIN payroll_periods pp ON pp.id = pe.payroll_period_id
+       JOIN workers w ON w.id = pe.worker_id
+       WHERE pe.project_id = ? AND pe.voided_at IS NULL AND pe.budget_item_id IS NULL
+       ORDER BY pp.period_start DESC, w.full_name`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/:id/payroll-periods', async (req, res, next) => {
   try {
     const projectId = req.params.id;

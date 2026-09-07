@@ -572,6 +572,13 @@ export interface PayrollEntry {
   void_reason?: string | null;
 }
 
+// Cross-period, unlike PayrollEntry -- carries payroll_period_id/period_label
+// since it isn't fetched from within a single period's own route.
+export interface UnassignedPayrollEntry extends PayrollEntry {
+  payroll_period_id: number;
+  period_label: string;
+}
+
 export interface Worker {
   [key: string]: unknown;
   id: number;
