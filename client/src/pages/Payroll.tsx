@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
+import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
 import { PROJECT_ID } from '../hooks/useProjectData';
 import { useTableUrlState } from '../hooks/useTableUrlState';
 import { PayrollPeriodFilters, type PayrollPeriodFilterValues } from '../components/PayrollPeriodFilters';
@@ -14,6 +15,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { StatusPill } from '../components/StatusPill';
 import { SummaryStats } from '../components/SummaryStats';
 import { ReconciliationBadge } from '../components/ReconciliationBadge';
+import { BudgetItemBreakdown } from '../components/BudgetItemBreakdown';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Tone } from '../lib/tones';
@@ -185,6 +187,22 @@ export function Payroll() {
     [workerFilters, activeFilter, syncWorkersToUrl],
   );
 
+  const budgetItemGroups = useMemo(
+    () =>
+      groupByBudgetItem(
+        (periodSummary?.by_budget_item ?? []).map((r) => {
+          const { key, label } = budgetItemKeyAndLabel(r.budget_item_id, r.budget_item_no, r.budget_item_description);
+          return {
+            budgetItemKey: key,
+            budgetItemLabel: label,
+            codeLabel: r.planning_line_code ?? 'No JPL code',
+            amount: r.total,
+          };
+        }),
+      ),
+    [periodSummary],
+  );
+
   function handleWorkerModalClose() {
     setWorkerModal(null);
     setWorkerRefreshKey((k) => k + 1);
@@ -240,6 +258,8 @@ export function Payroll() {
               ]}
             />
           )}
+
+          <BudgetItemBreakdown groups={budgetItemGroups} />
 
           <SegmentedControl
             value={attentionOnly}

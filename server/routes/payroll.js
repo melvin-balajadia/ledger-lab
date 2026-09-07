@@ -170,12 +170,31 @@ router.get('/:id/payroll-periods', async (req, res, next) => {
       [projectId, ...params]
     );
     const total = summaryRow.row_count;
+    // budget_item_id resolves to a real label (item_no + description);
+    // planning_line descriptions are all blank in the source (CLAUDE.md), so
+    // JPL codes are grouped underneath by their raw code only. Scoped to the
+    // same filtered periods as the summary tiles above -- entries on a period
+    // hidden by the current filter shouldn't show up in this breakdown either.
+    const [byBudgetItem] = await pool.query(
+      `SELECT pe.budget_item_id, bi.item_no AS budget_item_no, bi.description AS budget_item_description,
+              pe.planning_line_id, pl.code AS planning_line_code,
+              COALESCE(SUM(pe.amount), 0) AS total
+       FROM payroll_entries pe
+       JOIN (SELECT id FROM (${derived}) t WHERE ${whereSql}) fp ON fp.id = pe.payroll_period_id
+       LEFT JOIN budget_items bi ON bi.id = pe.budget_item_id
+       LEFT JOIN planning_lines pl ON pl.id = pe.planning_line_id
+       WHERE pe.voided_at IS NULL
+       GROUP BY pe.budget_item_id, bi.item_no, bi.description, pe.planning_line_id, pl.code
+       ORDER BY total DESC`,
+      [projectId, ...params]
+    );
     const summary = {
       row_count: summaryRow.row_count,
       total_control: summaryRow.total_control,
       total_extracted: summaryRow.total_extracted,
       total_delta: summaryRow.total_delta,
       attention_count: Number(summaryRow.attention_count),
+      by_budget_item: byBudgetItem,
     };
     const [rows] = await pool.query(
       `SELECT * FROM (${derived}) t WHERE ${whereSql} ORDER BY ${orderSql} LIMIT ? OFFSET ?`,
