@@ -18,8 +18,17 @@ BUDGET          approved          1,333,876,003
   DISBURSEMENT  cash paid out       481,937,708   (36%)
 ```
 
-`budget_items.contract_amount` is a **commitment**. `po_payments`, `replenishments`,
-`cash_advances`, `payroll_entries`, `additional_payments` are **disbursements**.
+The commitment is a **commitment**; `po_payments`, `replenishments`, `cash_advances`,
+`payroll_entries`, `additional_payments` are **disbursements**.
+
+**Where the commitment comes from (changed 2026-09-07, migration 024):** it is summed from
+`purchase_orders.contract_amount_php` via `v_po_contract_by_item`, not read from
+`budget_items.contract_amount`. That column was maintained by hand, was never once edited
+through the app, and had drifted **PHP 21,046,695.77** behind the POs across six items —
+item 2.0's gap was exactly the four POs entered since go-live. Accounting asked for it to
+follow the POs. The column is still there as the historical record of what the spreadsheet
+carried; **nothing reads it, and the UI shows it read-only.** Voiding a PO now lowers the
+commitment by itself.
 
 Never sum a commitment with a disbursement. There are two different "remaining" figures
 and both are exposed in `v_budget_vs_actual`:
@@ -70,8 +79,19 @@ creates siblings and validates that the parts sum to the whole.
 Not a single constant. Five distinct rates appear in the source (USD 61.57, 59.554, 58.599,
 57.554; EUR 72.48). `fx_rate` lives on both the PO and each individual payment.
 
-Note: **no PO is currently recorded in a foreign currency** — the source only holds peso
-amounts. The FX columns are in place but dormant. Do not build FX features unless asked.
+**This is live, not dormant** (updated 2026-09-01 — the original note here said no PO was in
+a foreign currency; that stopped being true as POs were entered). **7 POs are in foreign
+currency**: 6 USD and 1 EUR, PHP 437 M of commitment between them, on budget items 3.0, 4.0,
+5.0, 10.0 and 11.0. Rates in use: USD 58.599 / 60.00 (×4) / 60.377407 / 61.00, EUR 72.40.
+
+`contract_amount` holds the **native** amount and `contract_amount_php` is a STORED generated
+column (`contract_amount * fx_rate`), so correcting a rate is a one-row `UPDATE` and the peso
+figure follows. The trap is a foreign PO entered as `currency='PHP', fx_rate=1.0` — the peso
+total then silently reads as the native figure. That is exactly what happened to item 10.0
+(see `db/migrations/022_pallets_po_usd_fx.sql`): a USD 1,026,173.40 pallet contract showed as
+PHP 1,026,173.40 and opened a PHP 58 M hole against its Committed figure.
+
+Accounting sets the rate per item when asked; item 10.0 is fixed at PHP 60.00/USD.
 
 ### 8. Retention applies to SOME POs only
 
@@ -94,9 +114,25 @@ multi-part schedule.
 
 ### 9. Budgets get revised — log, never overwrite
 
-Two items are over budget (Fire Protection +61%, Bollards +19%) and accounting says the
-budgets will be adjusted. Never `UPDATE budget_items.revised_budget` in place. Insert into
-`budget_revisions` (before, after, effective date, reason) so variances stay explainable.
+Never `UPDATE budget_items.revised_budget` in place. Insert into `budget_revisions`
+(before, after, effective date, reason) so variances stay explainable.
+
+Fire Protection and Bollards used to show as over budget (+61%, +19%). **Resolved
+2026-09-07:** approved revisions covering both had been logged but never applied to
+`revised_budget`; accounting confirmed the revised figures are live and migration 016
+applies them. Both now read level with their commitments.
+
+Two traps that cost real time here:
+
+- **A revision that doesn't move the amount hides the one beneath it.** Bollards picked up a
+  `5,497,365.00 → 5,497,365.00` revision with no reason and no approver on 2026-08-31, and
+  migration 016's original "latest revision wins" logic would have applied *that* and
+  silently left Bollards untouched. 016 now ignores no-op revisions, and the revisions
+  endpoint rejects them — a revision must change the amount and carry a reason.
+- **Still over budget, legitimately:** items 1.0 and 16.0 carry contracts against a
+  `revised_budget` of 0.00, and 7.0 is over by PHP 4.92 (a source rounding artifact). Item
+  10.0 went over by PHP 2,355,670.00 when its USD contract was restated at 60.00 (migration
+  022). These are data conditions, not bugs to suppress.
 
 ---
 

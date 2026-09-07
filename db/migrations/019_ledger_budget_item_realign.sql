@@ -29,6 +29,14 @@
 -- never invent an attribution for an untagged row).
 USE rcsni_cost;
 
+-- MySQL Workbench's SQL Editor enables safe-update mode by default, which
+-- rejects an UPDATE ... JOIN whose WHERE doesn't reference a key column of
+-- the table being updated (project_id here isn't one) -- Error 1175. The
+-- `mysql` CLI doesn't have this restriction, which is why 008/014 (the same
+-- shape, run via CLI) never hit it. Scoped to this session only, restored
+-- at the end -- same convention as migration 018.
+SET SQL_SAFE_UPDATES = 0;
+
 UPDATE replenishments r
 JOIN planning_lines pl ON pl.id = r.planning_line_id
 SET r.budget_item_id = pl.budget_item_id
@@ -43,6 +51,8 @@ UPDATE additional_payments ap
 JOIN planning_lines pl ON pl.id = ap.planning_line_id
 SET ap.budget_item_id = pl.budget_item_id
 WHERE ap.project_id = 1;
+
+SET SQL_SAFE_UPDATES = 1;
 
 -- Verification: expect 0 rows back. Any row returned is a JPL-tagged row
 -- whose budget_item_id still disagrees with its planning line.

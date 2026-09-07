@@ -708,9 +708,14 @@ SELECT project_id, week_start, 'po', SUM(additional_po)
 -- needs_review exclusion as v_replen_by_item/v_addl_by_item, and includes
 -- all five disbursement sources (like v_budget_vs_actual.total_disbursed),
 -- so a budget item's WBS subtree reconciles with its Overview total.
+-- contract_amount is the PO commitment, kept as its own column and never
+-- folded into total_spend -- see CLAUDE.md rule #1 (never sum a commitment
+-- with a disbursement). It's a sum of purchase_orders and may not match a
+-- budget item's separately maintained "Committed" figure; see migration 021.
 CREATE OR REPLACE VIEW v_planning_line_spend AS
 SELECT pl.id AS planning_line_id, pl.project_id, pl.budget_item_id, pl.code, pl.description, pl.parent_id, pl.depth,
        pl.budget_amount, pl.is_active,
+       COALESCE(pc.amt, 0) AS contract_amount,
        COALESCE(rp.amt, 0) AS replen_amount,
        COALESCE(pa.amt, 0) AS po_paid_amount,
        COALESCE(ca.amt, 0) AS cash_advance_amount,
@@ -719,6 +724,8 @@ SELECT pl.id AS planning_line_id, pl.project_id, pl.budget_item_id, pl.code, pl.
        COALESCE(rp.amt,0) + COALESCE(pa.amt,0) + COALESCE(ca.amt,0)
          + COALESCE(ap.amt,0) + COALESCE(pe.amt,0)              AS total_spend
 FROM planning_lines pl
+LEFT JOIN (SELECT planning_line_id, SUM(contract_amount_php) amt FROM purchase_orders
+            WHERE voided_at IS NULL GROUP BY planning_line_id) pc ON pc.planning_line_id = pl.id
 LEFT JOIN (SELECT planning_line_id, SUM(amount) amt FROM replenishments
             WHERE needs_review = 0 AND voided_at IS NULL GROUP BY planning_line_id) rp ON rp.planning_line_id = pl.id
 LEFT JOIN (SELECT po.planning_line_id, SUM(pp.amount_php) amt

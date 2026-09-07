@@ -25,7 +25,8 @@ export function BudgetItemDetailsForm({
 
   const [descriptionText, setDescriptionText] = useState(description);
   const [budgetText, setBudgetText] = useState(budget);
-  const [contractText, setContractText] = useState(contractAmount);
+  // No setter -- the field is read-only now (see the input below).
+  const contractText = contractAmount;
   const [mode, setMode] = useState(procurementMode);
   const [remarksText, setRemarksText] = useState(remarks ?? '');
 
@@ -36,9 +37,14 @@ export function BudgetItemDetailsForm({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    // contract_amount is deliberately not sent. Since migration 024 the
+    // Committed figure is summed from the POs, so this field only displays it
+    // -- and the stored budget_items.contract_amount is kept as the historical
+    // record of what the spreadsheet carried. Omitting it from the PATCH
+    // leaves that record intact (the endpoint merges missing fields from the
+    // existing row); sending the derived figure back would overwrite it.
     const body: BudgetItemPatch = {
       description: descriptionText,
-      contract_amount: contractText || '0',
       procurement_mode: mode,
       remarks: remarksText || null,
     };
@@ -97,13 +103,16 @@ export function BudgetItemDetailsForm({
             type="number"
             step="0.01"
             min="0"
+            disabled
             value={contractText}
-            onChange={(e) => setContractText(e.target.value)}
-            className="w-full rounded-sm border border-rule-strong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+            className="w-full rounded-sm border border-rule-strong bg-surface px-3 py-2 text-sm text-ink outline-none disabled:bg-canvas disabled:text-ink-faint"
           />
-          {/* Not derived from the PO ledger -- v_budget_vs_actual reads this
-              stored column directly, so awarding a PO does not move it. */}
-          <span className="text-[13px] text-ink-faint">Maintained by hand, not summed from purchase orders.</span>
+          {/* Read-only since migration 024: v_budget_vs_actual sums this from
+              purchase_orders, so a typed figure here would be ignored -- and
+              the hand-kept column is what drifted PHP 21 M behind the POs. */}
+          <span className="text-[13px] text-ink-faint">
+            Summed from this item's purchase orders. Award or void a PO to change it.
+          </span>
         </label>
       </div>
 

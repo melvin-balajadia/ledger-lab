@@ -28,9 +28,24 @@
 --   - If NO   -> do not run it. Instead the app's revision endpoint should be
 --               changed to match migration 005, so the two stop disagreeing.
 --
+-- ANSWERED 2026-09-07: accounting confirms "approved revised budgets should be
+-- used", so this is cleared to run.
+--
 -- Sets revised_budget from the latest logged revision rather than hardcoding
 -- the figures, so this stays correct if another revision is recorded before
 -- it is run.
+--
+-- REVISED 2026-09-07 -- "latest revision" is not good enough. On 2026-08-31 a
+-- revision was saved against Bollards for 5,497,365.00 -> 5,497,365.00, with no
+-- reason and no approver: an accidental save that changed nothing. It is
+-- revision_no 2, so the original MAX(revision_no) logic below would have
+-- applied that no-op and left Bollards exactly as it was, silently fixing only
+-- Fire Protection while reporting success.
+--
+-- So: consider only revisions that actually moved the amount. The no-op row
+-- stays in the log (budget_revisions is append-only, rule #9) but no longer
+-- shadows the real revision underneath it. server/routes/budgetItems.js now
+-- rejects a zero-delta revision outright, so this cannot recur.
 -- ============================================================================
 USE rcsni_cost;
 
@@ -42,6 +57,7 @@ JOIN (
     SELECT budget_item_id, MAX(revision_no) AS max_rev
     FROM budget_revisions
     WHERE project_id = 1
+      AND amount_after <> amount_before   -- ignore no-op revisions
     GROUP BY budget_item_id
   ) latest
     ON latest.budget_item_id = br.budget_item_id
@@ -51,3 +67,8 @@ SET bi.revised_budget = applied.amount_after,
     bi.updated_by = 'migration-016'
 WHERE bi.project_id = 1
   AND bi.revised_budget <> applied.amount_after;
+
+-- Verification: expect Fire Protection 34,661,976.86 and Bollards
+-- 6,534,100.00, both with is_over_budget = 0.
+-- SELECT item_no, description, budget, contract_amount, is_over_budget
+--   FROM v_budget_vs_actual WHERE project_id = 1 AND item_no IN ('14.0','17.0');

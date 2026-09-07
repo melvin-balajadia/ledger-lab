@@ -158,6 +158,13 @@ router.post('/:id/budget-items/:budgetItemId/revisions', async (req, res, next) 
   if (amount_after === undefined || !new Decimal(amount_after).gt(0)) {
     errors.push('amount_after must be a positive number');
   }
+  // Rule #9 exists so variances stay explainable, which a blank reason
+  // defeats. Bollards picked up a revision on 2026-08-31 with no reason, no
+  // approver and no change of amount -- an accidental save that then shadowed
+  // the real revision underneath it (see migration 016).
+  if (!String(reason ?? '').trim()) {
+    errors.push('reason is required');
+  }
   if (errors.length > 0) return res.status(400).json({ error: errors });
 
   const appUser = req.session.username;
@@ -174,6 +181,17 @@ router.post('/:id/budget-items/:budgetItemId/revisions', async (req, res, next) 
       return res.status(404).json({ error: 'not found' });
     }
     const amountBefore = itemRows[0].revised_budget;
+
+    // A revision that doesn't move the number records nothing and hides the
+    // revision beneath it -- anything reading "the latest revision" then sees
+    // a no-op instead of the real figure. Checked here rather than in the
+    // validation block above because it needs the stored amount.
+    if (new Decimal(amount_after).eq(amountBefore)) {
+      await conn.rollback();
+      return res.status(400).json({
+        error: `amount_after is already the current budget (${amountBefore}) — a revision must change it`,
+      });
+    }
 
     const [[{ nextNo }]] = await conn.query(
       'SELECT COALESCE(MAX(revision_no), 0) + 1 AS nextNo FROM budget_revisions WHERE budget_item_id = ?',
