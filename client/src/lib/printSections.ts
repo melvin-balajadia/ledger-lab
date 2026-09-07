@@ -6,6 +6,7 @@ export const PRINT_SECTIONS = [
   { key: 'trend', label: 'Cost trend + breakdown charts' },
   { key: 'burn', label: 'Weekly burn rate' },
   { key: 'budget', label: 'Budget vs. actual table' },
+  { key: 'jpl', label: 'Cost by JPL code' },
   { key: 'retention', label: 'Retention held' },
   { key: 'suppliers', label: 'Top suppliers by spend' },
   { key: 'alerts', label: 'Alerts & anomalies' },

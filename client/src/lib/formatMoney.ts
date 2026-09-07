@@ -30,6 +30,16 @@ export function formatCurrency(value: string, currency: string): string {
   return fmt.format(Number(value));
 }
 
+const plain = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// For dense money tables that carry the currency in the column header instead
+// of on every cell. Zero renders as an em dash: a JPL grid is mostly zeros,
+// and 500 repetitions of "₱0.00" bury the figures that actually matter.
+export function formatAmountCell(value: string): string {
+  const n = Number(value);
+  return n === 0 ? '—' : plain.format(n);
+}
+
 export function formatPercent(ratio: string | null): string {
   if (ratio == null) return '—';
   return `${(Number(ratio) * 100).toFixed(1)}%`;

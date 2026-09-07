@@ -479,6 +479,20 @@ export interface DashboardAlert {
   date: string | null;
 }
 
+// One transaction behind a JPL code, normalised across the five disbursement
+// sources plus the PO award. `kind` keeps the commitment separable from cash
+// out -- they are never totalled together.
+export interface WbsTransaction {
+  kind: 'contract' | 'disbursement';
+  source: string;
+  txn_date: string | null;
+  reference: string | null;
+  party: string | null;
+  description: string | null;
+  amount: string;
+  needs_review: 0 | 1;
+}
+
 export interface WbsRow {
   planning_line_id: number;
   project_id: number;
@@ -489,6 +503,7 @@ export interface WbsRow {
   depth: number;
   budget_amount: string | null;
   is_active: 0 | 1;
+  contract_amount: string;
   replen_amount: string;
   po_paid_amount: string;
   cash_advance_amount: string;
@@ -523,6 +538,7 @@ export interface PayrollPeriodSummary {
   total_extracted: string;
   total_delta: string;
   attention_count: number;
+  by_budget_item: BudgetItemJplTotal[];
 }
 
 export interface PayrollPeriodListResponse {

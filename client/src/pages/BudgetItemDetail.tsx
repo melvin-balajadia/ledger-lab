@@ -96,7 +96,13 @@ export function BudgetItemDetail() {
               </Button>
             </div>
             {wbsLoading && <p className="text-sm text-ink-muted">Loading…</p>}
-            {wbsRows && <WbsTable rows={wbsRows} onEdit={(row) => setLineModal(toPlanningLine(row))} />}
+            {wbsRows && (
+              <WbsTable
+                rows={wbsRows}
+                committedContract={item.contract_amount}
+                onEdit={(row) => setLineModal(toPlanningLine(row))}
+              />
+            )}
           </section>
 
           {lineModal && (

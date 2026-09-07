@@ -4,13 +4,27 @@ import { IconPenLine } from './icons';
 import { StatusPill } from './StatusPill';
 import type { WbsRow } from '../types';
 
-export function WbsTable({ rows, onEdit }: { onEdit?: (row: WbsRow) => void; rows: WbsRow[] }) {
+export function WbsTable({
+  rows,
+  onEdit,
+  committedContract,
+}: {
+  committedContract?: string;
+  onEdit?: (row: WbsRow) => void;
+  rows: WbsRow[];
+}) {
   if (rows.length === 0) {
     return <p className="text-sm text-ink-faint">No JPL / WBS codes recorded under this item.</p>;
   }
 
   const sorted = [...rows].sort((a, b) => compareCodes(a.code, b.code));
+  const contractTotal = sumMoney(sorted.map((row) => row.contract_amount));
   const total = sumMoney(sorted.map((row) => row.total_spend));
+  // Since migration 024 the item's Committed card and this column are both
+  // summed from the same POs, so they agree unless a PO on this item carries
+  // no JPL code -- it would count toward the item but sit in no row here.
+  // That is worth surfacing, so the check stays; only its meaning changed.
+  const contractDelta = committedContract != null ? sumMoney([committedContract, `-${contractTotal}`]) : null;
 
   return (
     <div className="overflow-x-auto rounded-md border border-rule bg-surface shadow-card">
@@ -18,6 +32,7 @@ export function WbsTable({ rows, onEdit }: { onEdit?: (row: WbsRow) => void; row
         <thead>
           <tr className="bg-surface-2 text-left text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
             <th className="py-2.5 px-3.5">Code</th>
+            <th className="py-2.5 px-3.5 text-right">Contract (POs)</th>
             <th className="py-2.5 px-3.5 text-right">Replenishments</th>
             <th className="py-2.5 px-3.5 text-right">PO Paid</th>
             <th className="py-2.5 px-3.5 text-right">Cash Advances</th>
@@ -36,6 +51,7 @@ export function WbsTable({ rows, onEdit }: { onEdit?: (row: WbsRow) => void; row
                   {row.is_active === 0 && <StatusPill tone="info">Inactive</StatusPill>}
                 </span>
               </td>
+              <td className="py-1.5 px-3.5 text-right font-mono tabular-nums">{formatMoney(row.contract_amount)}</td>
               <td className="py-1.5 px-3.5 text-right font-mono tabular-nums">{formatMoney(row.replen_amount)}</td>
               <td className="py-1.5 px-3.5 text-right font-mono tabular-nums">{formatMoney(row.po_paid_amount)}</td>
               <td className="py-1.5 px-3.5 text-right font-mono tabular-nums">{formatMoney(row.cash_advance_amount)}</td>
@@ -60,6 +76,7 @@ export function WbsTable({ rows, onEdit }: { onEdit?: (row: WbsRow) => void; row
         <tfoot>
           <tr className="border-t-2 border-ink font-semibold">
             <td className="py-1.5 px-3.5">Total</td>
+            <td className="py-1.5 px-3.5 text-right font-mono tabular-nums">{formatMoney(contractTotal)}</td>
             <td className="py-1.5 px-3.5" />
             <td className="py-1.5 px-3.5" />
             <td className="py-1.5 px-3.5" />
@@ -70,6 +87,12 @@ export function WbsTable({ rows, onEdit }: { onEdit?: (row: WbsRow) => void; row
           </tr>
         </tfoot>
       </table>
+      {contractDelta != null && contractDelta !== '0.00' && (
+        <p className="border-t border-rule px-3.5 py-2 text-[13px] text-ink-faint">
+          {formatMoney(contractDelta)} of this item's contract value sits on a PO with no JPL code, so it
+          counts toward Committed but appears in no row below. Tag those POs to a code to account for it.
+        </p>
+      )}
     </div>
   );
 }

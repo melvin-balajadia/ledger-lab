@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectSummary, useProjectKpis } from '../hooks/useProjectData';
+import { useWbs } from '../hooks/useWbs';
+import { JplSummaryPanel } from '../components/JplSummaryPanel';
 import { useCostBreakdown, useCostTrend, useAlerts, useRetentionSummary, useVatSummary, useTopSuppliers } from '../hooks/useDashboardAnalytics';
 import { KpiCards } from '../components/KpiCards';
 import { BudgetTable } from '../components/BudgetTable';
@@ -51,6 +53,7 @@ export function Overview() {
   const retention = useRetentionSummary();
   const vatSummary = useVatSummary();
   const topSuppliers = useTopSuppliers(10);
+  const wbs = useWbs();
 
   const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [showNewBudgetItem, setShowNewBudgetItem] = useState(false);
@@ -148,6 +151,12 @@ export function Overview() {
               onCreate={() => setShowNewBudgetItem(true)}
             />
           </Section>
+
+          {wbs.data && (
+            <Section show={shows('jpl')}>
+              <JplSummaryPanel rows={wbs.data} items={summary.data} />
+            </Section>
+          )}
 
           {retention.data && (
             <Section show={shows('retention')}>
