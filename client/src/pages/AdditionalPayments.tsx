@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
@@ -67,6 +67,7 @@ const columns: ColumnDef<AdditionalPayment>[] = [
 
 export function AdditionalPayments() {
   const [needsReviewOnly, setNeedsReviewOnly] = useState<'all' | 'flagged'>('all');
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [filters, setFilters] = useState<AdditionalPaymentFilterValues>({ date_from: '', date_to: '' });
   const [modal, setModal] = useState<'create' | AdditionalPayment | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -75,6 +76,7 @@ export function AdditionalPayments() {
   const voidedQuery = useVoidedAdditionalPayments(showDeleted);
   const restoreMutation = useRestoreAdditionalPayment();
   const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'ap', filterKeys: [], defaultPerPage: 10 });
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(
     async (fetchParams: FetchParams) => {
@@ -89,6 +91,7 @@ export function AdditionalPayments() {
         params.set('sortDir', sortDir ?? 'asc');
       }
       if (needsReviewOnly === 'flagged') params.set('needs_review', '1');
+      if (unassignedOnly) params.set('unassigned', '1');
       if (filters.expense_type) params.set('expense_type', filters.expense_type);
       if (filters.supplier_id) params.set('supplier_id', String(filters.supplier_id));
       if (filters.planning_line_id) params.set('planning_line_id', String(filters.planning_line_id));
@@ -102,7 +105,7 @@ export function AdditionalPayments() {
       setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly, syncToUrl],
+    [filters, needsReviewOnly, unassignedOnly, syncToUrl],
   );
 
   function handleModalClose() {
@@ -162,7 +165,13 @@ export function AdditionalPayments() {
         />
       )}
 
-      <BudgetItemBreakdown groups={budgetItemGroups} />
+      <BudgetItemBreakdown
+        groups={budgetItemGroups}
+        onUnassignedClick={() => {
+          setUnassignedOnly(true);
+          tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+      />
 
       <SegmentedControl
         value={needsReviewOnly}
@@ -175,19 +184,30 @@ export function AdditionalPayments() {
 
       <AdditionalPaymentFilters onChange={setFilters} />
 
-      <DataTable<AdditionalPayment>
-        columns={columns}
-        fetchData={fetchData}
-        rowKey="id"
-        onView={(row) => setModal(row)}
-        exportable
-        title="Additional Payments"
-        perPageOptions={[10, 25, 50, 100]}
-        searchPlaceholder="Search payee, description, or voucher no…"
-        emptyMessage="No additional payments match these filters."
-        refreshKey={refreshKey}
-        initialState={buildFetchParams()}
-      />
+      {unassignedOnly && (
+        <p className="rounded-sm border border-warn bg-warn-soft px-3 py-2 text-sm text-ink">
+          Showing entries with no budget item only.{' '}
+          <button type="button" onClick={() => setUnassignedOnly(false)} className="font-medium text-accent hover:underline">
+            Clear
+          </button>
+        </p>
+      )}
+
+      <div ref={tableRef}>
+        <DataTable<AdditionalPayment>
+          columns={columns}
+          fetchData={fetchData}
+          rowKey="id"
+          onView={(row) => setModal(row)}
+          exportable
+          title="Additional Payments"
+          perPageOptions={[10, 25, 50, 100]}
+          searchPlaceholder="Search payee, description, or voucher no…"
+          emptyMessage="No additional payments match these filters."
+          refreshKey={refreshKey}
+          initialState={buildFetchParams()}
+        />
+      </div>
 
       {modal && (
         <Modal title={modal === 'create' ? 'New additional payment' : 'Edit additional payment'} onClose={handleModalClose}>

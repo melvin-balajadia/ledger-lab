@@ -27,7 +27,16 @@ const CASH_COLUMNS = COST_CATEGORIES.map((c) => ({
 }));
 
 const CONTRACT_KEY = 'contract_amount' as const;
-const ALL_LEDGERS = CASH_COLUMNS.map((c) => c.key as string);
+// A neutral, non-series colour on purpose -- Contract is a commitment, not a
+// disbursement, and it stays visually distinct from the five ledger colours
+// even when she opts it into the total below.
+const CONTRACT_COLUMN = { key: CONTRACT_KEY as string, label: 'Contract', full: 'Contract', color: 'var(--color-rule-strong)' };
+const DEFAULT_LEDGERS = CASH_COLUMNS.map((c) => c.key as string);
+// Everything the "Include" row can toggle: the five ledgers plus Contract,
+// which is off by default (see the `ledgers` state below) precisely because
+// summing it in double-counts any PO that's been partially paid.
+const TOGGLEABLE = [...CASH_COLUMNS, CONTRACT_COLUMN];
+const TOGGLE_KEYS = TOGGLEABLE.map((c) => c.key as string);
 
 interface Group {
   key: string;
@@ -89,7 +98,7 @@ function MixBar({
   const whole = Number(total);
   if (whole <= 0) return null;
 
-  const segments = CASH_COLUMNS.filter((c) => ledgers.includes(c.key as string))
+  const segments = TOGGLEABLE.filter((c) => ledgers.includes(c.key as string))
     .map((col) => ({
       color: col.color,
       label: col.label,
@@ -113,13 +122,15 @@ function MixBar({
 export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; rows: WbsRow[] }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [openCode, setOpenCode] = useState<WbsRow | null>(null);
-  // Always starts with every ledger on. Deliberately not remembered between
-  // visits: a total quietly missing payroll because of a box ticked last week
-  // is the one way this control could do real damage.
-  const [ledgers, setLedgers] = useState<string[]>(ALL_LEDGERS);
+  // Always starts with the five ledgers on and Contract off. Deliberately not
+  // remembered between visits: a total quietly missing payroll (or quietly
+  // including Contract) because of a box ticked last week is the one way this
+  // control could do real damage.
+  const [ledgers, setLedgers] = useState<string[]>(DEFAULT_LEDGERS);
 
   const columns = CASH_COLUMNS.filter((c) => ledgers.includes(c.key as string));
-  const isFiltered = ledgers.length !== ALL_LEDGERS.length;
+  const includesContract = ledgers.includes(CONTRACT_KEY);
+  const isFiltered = ledgers.length !== DEFAULT_LEDGERS.length || DEFAULT_LEDGERS.some((k) => !ledgers.includes(k));
 
   // A row earns its place if any chosen ledger carries money, or if it holds a
   // contract -- awarded-but-unpaid is worth seeing whatever the filter says.
@@ -149,7 +160,7 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
       // Never let the last one go -- an empty selection means a table of
       // zeroes, which reads as "no spend" rather than "nothing selected".
       if (prev.includes(key)) return prev.length === 1 ? prev : prev.filter((k) => k !== key);
-      return ALL_LEDGERS.filter((k) => prev.includes(k) || k === key);
+      return TOGGLE_KEYS.filter((k) => prev.includes(k) || k === key);
     });
   }
 
@@ -173,19 +184,24 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
           the control and the thing it controls read as one. */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-rule px-4 py-2.5 print:hidden">
         <span className="mr-1 text-[11px] font-semibold tracking-wide text-ink-faint uppercase">Include</span>
-        {CASH_COLUMNS.map((col) => {
+        {TOGGLEABLE.map((col) => {
           const on = ledgers.includes(col.key as string);
+          const isContractChip = col.key === CONTRACT_KEY;
           return (
             <button
               key={col.key}
               type="button"
               onClick={() => toggleLedger(col.key as string)}
               aria-pressed={on}
-              className={`inline-flex items-center gap-1.5 rounded-full border py-1 pr-2.5 pl-2 text-[12px] font-medium transition-colors ${
+              // Contract's chip gets its own divider -- it's not one of the
+              // five ledgers, and the gap keeps that visible even before
+              // she's read why.
+              className={`inline-flex items-center gap-1.5 rounded-full border py-1 pr-2.5 pl-2 text-[12px] font-medium transition-colors ${isContractChip ? 'ml-2' : ''} ${
                 on
                   ? 'border-rule-strong bg-surface-2 text-ink'
                   : 'border-rule bg-surface text-ink-faint hover:text-ink-muted'
               }`}
+              title={isContractChip ? 'A commitment, not cash paid -- adding it double-counts any PO already partially paid.' : undefined}
             >
               {on ? (
                 <IconCheck className="h-3 w-3" />
@@ -203,7 +219,7 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
         {isFiltered && (
           <button
             type="button"
-            onClick={() => setLedgers(ALL_LEDGERS)}
+            onClick={() => setLedgers(DEFAULT_LEDGERS)}
             className="ml-1 text-[12px] font-medium text-accent hover:underline"
           >
             Reset
@@ -216,10 +232,12 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
           <thead className="sticky top-0 z-10 bg-surface-2 text-[10px] font-semibold tracking-wider text-ink-faint uppercase">
             <tr>
               <th className="px-4 py-2.5 text-left font-semibold">Budget item / code</th>
-              {/* The vertical rule, not a second header row, marks the boundary
-                  the domain depends on: Contract is a commitment and never
-                  belongs in the cash-out arithmetic beside it -- which is also
-                  why it has no chip and can never be filtered into the total. */}
+              {/* Contract always shows here regardless of the Include chips --
+                  the vertical rule marks the boundary the domain cares about
+                  (commitment vs. disbursement), not a boundary this column
+                  itself enforces. Its own chip lets her fold it into the
+                  total anyway, on purpose, with the double-count called out
+                  in the footer and the chip's own tooltip. */}
               <th className="px-3 py-2.5 text-right font-semibold">Contract</th>
               {columns.map((col, i) => (
                 <th
@@ -240,7 +258,7 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
                   <>
                     Selected total
                     <span className="block text-[9px] font-medium normal-case">
-                      {ledgers.length} of {ALL_LEDGERS.length} ledgers
+                      {ledgers.length} of {TOGGLE_KEYS.length} included
                     </span>
                   </>
                 ) : (
@@ -321,7 +339,7 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
                           </span>
                           <MixBar
                             amounts={Object.fromEntries(
-                              CASH_COLUMNS.map((c) => [c.key as string, row[c.key] as string]),
+                              TOGGLEABLE.map((c) => [c.key as string, row[c.key as keyof WbsRow] as string]),
                             )}
                             total={total}
                             ledgers={ledgers}
@@ -362,18 +380,25 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
       <p className="border-t border-rule px-4 py-2.5 text-[13px] text-ink-faint">
         {/* Stated in the body, not just the header, so it survives onto the
             printout where the chips are hidden. */}
-        {isFiltered && (
+        {includesContract && (
           <span className="font-medium text-warn">
-            Total covers {columns.map((c) => c.full).join(', ')} only —{' '}
+            Total includes Contract — a commitment, not cash paid. For any code with a partially paid PO, this
+            double-counts the paid portion; don&apos;t read it as a cash figure.{' '}
+          </span>
+        )}
+        {columns.length < CASH_COLUMNS.length && (
+          <span className="font-medium text-warn">
+            Total covers {columns.length > 0 ? columns.map((c) => c.full).join(', ') : 'no ledgers'} only —{' '}
             {CASH_COLUMNS.filter((c) => !ledgers.includes(c.key as string))
               .map((c) => c.full)
               .join(' and ')}{' '}
             excluded.{' '}
           </span>
         )}
-        All figures in PHP. Contract is what has been awarded and is never added to cash out — the two answer
-        different questions. Both it and the Committed column in Budget vs. actual are summed from the same
-        POs, so the two always agree.
+        All figures in PHP.{' '}
+        {includesContract
+          ? 'Contract is summed from the POs tagged to each code, so it can differ from the Committed column in Budget vs. actual, which is maintained separately.'
+          : 'Contract is what has been awarded and is never added to cash out by default — the two answer different questions. Both it and the Committed column in Budget vs. actual are summed from the same POs, so the two always agree.'}
         {hiddenCount > 0 && ` ${hiddenCount} codes with no activity are not listed.`}
       </p>
 

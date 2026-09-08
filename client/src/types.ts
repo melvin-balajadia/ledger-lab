@@ -477,6 +477,9 @@ export interface DashboardAlert {
   severity: AlertSeverity;
   message: string;
   date: string | null;
+  // Where clicking this alert should take her -- omitted for the ones with
+  // no single obvious destination (e.g. "payroll completed").
+  href?: string | null;
 }
 
 // One transaction behind a JPL code, normalised across the five disbursement

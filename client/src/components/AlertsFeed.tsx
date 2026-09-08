@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { AlertSeverity, DashboardAlert } from '../types';
 import { IconAlertCircle, IconAlertTriangle, IconCheckCircle, IconInfo } from './icons';
 import { toneClasses } from '../lib/tones';
@@ -25,8 +26,9 @@ export function AlertsFeed({ alerts }: { alerts: DashboardAlert[] }) {
         const Icon = severityIcon[alert.severity];
         const { bg, text } = toneClasses[alert.severity];
         const displayDate = formatDate(alert.date);
-        return (
-          <div key={i} className={`flex gap-3 py-3.5 ${i < alerts.length - 1 ? 'border-b border-rule' : ''}`}>
+        const rowClass = `flex gap-3 py-3.5 ${i < alerts.length - 1 ? 'border-b border-rule' : ''}`;
+        const content = (
+          <>
             <span className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-md ${bg} ${text}`}>
               <Icon className="h-3.75 w-3.75" />
             </span>
@@ -34,6 +36,18 @@ export function AlertsFeed({ alerts }: { alerts: DashboardAlert[] }) {
               <p className="text-[13px] leading-snug text-ink">{alert.message}</p>
               {displayDate && <span className="text-[11px] text-ink-faint">{displayDate}</span>}
             </div>
+          </>
+        );
+        // Only some alerts have one obvious place to send her -- the rest
+        // (e.g. "payroll completed") stay plain text rather than a link to
+        // nowhere in particular.
+        return alert.href ? (
+          <Link key={i} to={alert.href} className={`${rowClass} -mx-1 rounded-sm px-1 hover:bg-surface-2`}>
+            {content}
+          </Link>
+        ) : (
+          <div key={i} className={rowClass}>
+            {content}
           </div>
         );
       })}

@@ -189,6 +189,13 @@ router.get('/:id/purchase-orders', async (req, res, next) => {
       where.push('po.planning_line_id IN (?)');
       params.push(planningLineIds);
     }
+    // Drives the "Unassigned" row's drill-through on the ledger page -- a PO
+    // with no budget item drops out of Committed with nothing to flag it
+    // (POR18380 was exactly this before she assigned it by hand; see the
+    // 2026-09-07 migration runbook). Now she can find one without a SQL query.
+    if (req.query.unassigned === '1') {
+      where.push('po.budget_item_id IS NULL');
+    }
     if (req.query.status) {
       where.push('v.status = ?');
       params.push(req.query.status);

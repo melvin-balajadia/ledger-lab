@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
@@ -57,6 +57,7 @@ const columns: ColumnDef<Replenishment>[] = [
 
 export function Replenishments() {
   const [needsReviewOnly, setNeedsReviewOnly] = useState<'all' | 'flagged'>('all');
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [filters, setFilters] = useState<FilterValues>({ date_from: '', date_to: '' });
   const [modal, setModal] = useState<'create' | Replenishment | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -65,6 +66,7 @@ export function Replenishments() {
   const voidedQuery = useVoidedReplenishments(showDeleted);
   const restoreMutation = useRestoreReplenishment();
   const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'repl', filterKeys: [], defaultPerPage: 10 });
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(
     async (fetchParams: FetchParams) => {
@@ -79,6 +81,7 @@ export function Replenishments() {
         params.set('sortDir', sortDir ?? 'asc');
       }
       if (needsReviewOnly === 'flagged') params.set('needs_review', '1');
+      if (unassignedOnly) params.set('unassigned', '1');
       if (filters.ref_type) params.set('ref_type', filters.ref_type);
       if (filters.supplier_id) params.set('supplier_id', String(filters.supplier_id));
       if (filters.planning_line_id) params.set('planning_line_id', String(filters.planning_line_id));
@@ -92,7 +95,7 @@ export function Replenishments() {
       setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly, syncToUrl],
+    [filters, needsReviewOnly, unassignedOnly, syncToUrl],
   );
 
   function handleModalClose() {
@@ -161,7 +164,13 @@ export function Replenishments() {
         />
       )}
 
-      <BudgetItemBreakdown groups={budgetItemGroups} />
+      <BudgetItemBreakdown
+        groups={budgetItemGroups}
+        onUnassignedClick={() => {
+          setUnassignedOnly(true);
+          tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+      />
 
       <SegmentedControl
         value={needsReviewOnly}
@@ -174,19 +183,30 @@ export function Replenishments() {
 
       <ReplenishmentFilters onChange={setFilters} />
 
-      <DataTable<Replenishment>
-        columns={columns}
-        fetchData={fetchData}
-        rowKey="id"
-        onView={(row) => setModal(row)}
-        exportable
-        title="Replenishments"
-        perPageOptions={[10, 50, 100, 200]}
-        searchPlaceholder="Search description or ref no…"
-        emptyMessage="No replenishments match these filters."
-        refreshKey={refreshKey}
-        initialState={buildFetchParams()}
-      />
+      {unassignedOnly && (
+        <p className="rounded-sm border border-warn bg-warn-soft px-3 py-2 text-sm text-ink">
+          Showing entries with no budget item only.{' '}
+          <button type="button" onClick={() => setUnassignedOnly(false)} className="font-medium text-accent hover:underline">
+            Clear
+          </button>
+        </p>
+      )}
+
+      <div ref={tableRef}>
+        <DataTable<Replenishment>
+          columns={columns}
+          fetchData={fetchData}
+          rowKey="id"
+          onView={(row) => setModal(row)}
+          exportable
+          title="Replenishments"
+          perPageOptions={[10, 50, 100, 200]}
+          searchPlaceholder="Search description or ref no…"
+          emptyMessage="No replenishments match these filters."
+          refreshKey={refreshKey}
+          initialState={buildFetchParams()}
+        />
+      </div>
 
       {modal && (
         <Modal title={modal === 'create' ? 'New replenishment' : 'Edit replenishment'} onClose={handleModalClose}>

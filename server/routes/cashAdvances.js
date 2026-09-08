@@ -109,6 +109,12 @@ router.get('/:id/cash-advances', async (req, res, next) => {
       where.push('r.planning_line_id IN (?)');
       params.push(planningLineIds);
     }
+    // Drives the "Unassigned" row's drill-through on the ledger page -- rows
+    // with no budget item, the ones that would otherwise silently drop out
+    // of every by-budget-item total.
+    if (req.query.unassigned === '1') {
+      where.push('r.budget_item_id IS NULL');
+    }
     if (req.query.date_from) {
       where.push('r.txn_date >= ?');
       params.push(req.query.date_from);

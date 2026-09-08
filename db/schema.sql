@@ -78,7 +78,11 @@ CREATE TABLE budget_items (
   description       VARCHAR(191) NOT NULL,
   original_budget   DECIMAL(18,2) NOT NULL DEFAULT 0,
   revised_budget    DECIMAL(18,2) NOT NULL DEFAULT 0,
-  contract_amount   DECIMAL(18,2) NOT NULL DEFAULT 0,  -- "TOTAL COST BY CONTRACT" (committed)
+  -- Was "TOTAL COST BY CONTRACT" (committed), hand-typed. Since migration 024
+  -- v_budget_vs_actual derives Committed from purchase_orders instead; this
+  -- column is kept only as the historical figure the spreadsheet carried, and
+  -- the app's own budget-item form now shows it read-only.
+  contract_amount   DECIMAL(18,2) NOT NULL DEFAULT 0,
   procurement_mode  ENUM('inhouse','po_awarded','for_bidding','bac_recommendation','third_party','other')
                     NOT NULL DEFAULT 'other',
   remarks           TEXT NULL,
@@ -601,6 +605,17 @@ SELECT project_id, budget_item_id, SUM(amount) AS cash_advanced
 FROM cash_advances WHERE voided_at IS NULL
 GROUP BY project_id, budget_item_id;
 
+-- Commitment side, same shape as v_po_paid_by_item. Since migration 024 this
+-- is the sole source of v_budget_vs_actual.contract_amount -- the hand-typed
+-- budget_items.contract_amount column stays only as the historical figure
+-- the spreadsheet carried; nothing reads it any more. Voided POs excluded, so
+-- voiding a PO lowers the commitment by itself.
+CREATE OR REPLACE VIEW v_po_contract_by_item AS
+SELECT project_id, budget_item_id, SUM(contract_amount_php) AS contract_amount
+  FROM purchase_orders
+ WHERE voided_at IS NULL AND budget_item_id IS NOT NULL
+ GROUP BY project_id, budget_item_id;
+
 -- The SUMMARY sheet, rebuilt. This is the main dashboard table.
 -- NOTE the two remaining columns. `remaining_vs_contract` is budget minus
 -- COMMITMENT ("how much can I still award?"). `remaining_vs_disbursed` is
@@ -616,7 +631,7 @@ SELECT
   bi.procurement_mode,
   bi.remarks,
   bi.revised_budget                    AS budget,
-  bi.contract_amount                   AS contract_amount,
+  COALESCE(pc.contract_amount, 0)      AS contract_amount,
   COALESCE(l.labor_cost, 0)            AS labor_cost,
   COALESCE(c.cash_advanced, 0)         AS cash_advanced,
   COALESCE(p.paid_po_amount, 0)        AS paid_po_amount,
@@ -625,15 +640,16 @@ SELECT
   COALESCE(p.paid_po_amount,0) + COALESCE(r.replen_amount,0)
     + COALESCE(c.cash_advanced,0) + COALESCE(l.labor_cost,0)
     + COALESCE(a.additional_payment,0)                        AS total_disbursed,
-  bi.revised_budget - bi.contract_amount                      AS remaining_vs_contract,
+  bi.revised_budget - COALESCE(pc.contract_amount, 0)         AS remaining_vs_contract,
   bi.revised_budget - (COALESCE(p.paid_po_amount,0) + COALESCE(r.replen_amount,0)
     + COALESCE(c.cash_advanced,0) + COALESCE(l.labor_cost,0)
     + COALESCE(a.additional_payment,0))                       AS remaining_vs_disbursed,
   CASE WHEN bi.revised_budget > 0
-       THEN ROUND(bi.contract_amount / bi.revised_budget, 4) END AS commitment_ratio,
-  CASE WHEN bi.contract_amount > bi.revised_budget THEN 1 ELSE 0 END AS is_over_budget,
+       THEN ROUND(COALESCE(pc.contract_amount, 0) / bi.revised_budget, 4) END AS commitment_ratio,
+  CASE WHEN COALESCE(pc.contract_amount, 0) > bi.revised_budget THEN 1 ELSE 0 END AS is_over_budget,
   (SELECT COUNT(*) FROM budget_revisions br WHERE br.budget_item_id = bi.id) AS revision_count
 FROM budget_items bi
+LEFT JOIN v_po_contract_by_item pc ON pc.budget_item_id = bi.id
 LEFT JOIN v_po_paid_by_item p ON p.budget_item_id = bi.id
 LEFT JOIN v_replen_by_item  r ON r.budget_item_id = bi.id
 LEFT JOIN v_ca_by_item      c ON c.budget_item_id = bi.id

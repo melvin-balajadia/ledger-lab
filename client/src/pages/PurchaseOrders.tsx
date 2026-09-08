@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
@@ -83,6 +83,7 @@ const columns: ColumnDef<PurchaseOrder>[] = [
 
 export function PurchaseOrders() {
   const [outstandingOnly, setOutstandingOnly] = useState<'all' | 'outstanding'>('all');
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
   const [filters, setFilters] = useState<PurchaseOrderFilterValues>({ date_from: '', date_to: '' });
   const [selected, setSelected] = useState<PurchaseOrder | null>(null);
   const [creating, setCreating] = useState(false);
@@ -95,6 +96,7 @@ export function PurchaseOrders() {
   // above (CLAUDE.md) -- pulled from the same source RetentionPanel uses.
   const retentionQuery = useRetentionSummary();
   const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: 'po', filterKeys: [], defaultPerPage: 10 });
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(
     async (fetchParams: FetchParams) => {
@@ -109,6 +111,7 @@ export function PurchaseOrders() {
         params.set('sortDir', sortDir ?? 'asc');
       }
       if (outstandingOnly === 'outstanding') params.set('outstanding', '1');
+      if (unassignedOnly) params.set('unassigned', '1');
       if (filters.status) params.set('status', filters.status);
       if (filters.supplier_id) params.set('supplier_id', String(filters.supplier_id));
       if (filters.budget_item_id) params.set('budget_item_id', String(filters.budget_item_id));
@@ -123,7 +126,7 @@ export function PurchaseOrders() {
       setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, outstandingOnly, syncToUrl],
+    [filters, outstandingOnly, unassignedOnly, syncToUrl],
   );
 
   const budgetItemGroups = useMemo(
@@ -186,7 +189,14 @@ export function PurchaseOrders() {
         />
       )}
 
-      <BudgetItemBreakdown groups={budgetItemGroups} title="By budget item (contract amount)" />
+      <BudgetItemBreakdown
+        groups={budgetItemGroups}
+        title="By budget item (contract amount)"
+        onUnassignedClick={() => {
+          setUnassignedOnly(true);
+          tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }}
+      />
 
       <SegmentedControl
         value={outstandingOnly}
@@ -199,19 +209,30 @@ export function PurchaseOrders() {
 
       <PurchaseOrderFilters onChange={setFilters} />
 
-      <DataTable<PurchaseOrder>
-        columns={columns}
-        fetchData={fetchData}
-        rowKey="id"
-        onView={(row) => setSelected(row)}
-        exportable
-        title="Purchase Orders"
-        perPageOptions={[10, 25, 50, 100]}
-        searchPlaceholder="Search PO no. or description…"
-        emptyMessage="No purchase orders match these filters."
-        refreshKey={refreshKey}
-        initialState={buildFetchParams()}
-      />
+      {unassignedOnly && (
+        <p className="rounded-sm border border-warn bg-warn-soft px-3 py-2 text-sm text-ink">
+          Showing POs with no budget item only.{' '}
+          <button type="button" onClick={() => setUnassignedOnly(false)} className="font-medium text-accent hover:underline">
+            Clear
+          </button>
+        </p>
+      )}
+
+      <div ref={tableRef}>
+        <DataTable<PurchaseOrder>
+          columns={columns}
+          fetchData={fetchData}
+          rowKey="id"
+          onView={(row) => setSelected(row)}
+          exportable
+          title="Purchase Orders"
+          perPageOptions={[10, 25, 50, 100]}
+          searchPlaceholder="Search PO no. or description…"
+          emptyMessage="No purchase orders match these filters."
+          refreshKey={refreshKey}
+          initialState={buildFetchParams()}
+        />
+      </div>
 
       {selected && (
         <Modal title={`${selected.por_no} — ${selected.supplier}`} onClose={closeDetail}>
