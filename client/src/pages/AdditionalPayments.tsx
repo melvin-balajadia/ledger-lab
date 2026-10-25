@@ -218,7 +218,7 @@ export function AdditionalPayments() {
           exportable
           title="Additional Payments"
           perPageOptions={[10, 25, 50, 100]}
-          searchPlaceholder="Search payee, description, or voucher no…"
+          searchPlaceholder="Search payee, supplier, description, or voucher no…"
           emptyMessage="No additional payments match these filters."
           refreshKey={refreshKey}
           initialState={buildFetchParams()}

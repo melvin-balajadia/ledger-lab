@@ -217,7 +217,7 @@ export function Replenishments() {
           exportable
           title="Replenishments"
           perPageOptions={[10, 50, 100, 200]}
-          searchPlaceholder="Search description or ref no…"
+          searchPlaceholder="Search supplier, description, or ref no…"
           emptyMessage="No replenishments match these filters."
           refreshKey={refreshKey}
           initialState={buildFetchParams()}

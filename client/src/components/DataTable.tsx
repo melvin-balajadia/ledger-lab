@@ -577,7 +577,8 @@ export function DataTable<T extends { [key: string]: unknown }>({
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState(initialState?.search ?? "");
-  const debouncedSearch = useDebounce(search, searchDebounce);
+  // Trimmed: a PO no. pasted with a trailing space matched nothing.
+  const debouncedSearch = useDebounce(search, searchDebounce).trim();
   const [sortKey, setSortKey] = useState<string | null>(
     initialState?.sortKey ?? null,
   );

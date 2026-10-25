@@ -243,7 +243,7 @@ export function PurchaseOrders() {
           exportable
           title="Purchase Orders"
           perPageOptions={[10, 25, 50, 100]}
-          searchPlaceholder="Search PO no. or description…"
+          searchPlaceholder="Search PO no., supplier, or description…"
           emptyMessage="No purchase orders match these filters."
           refreshKey={refreshKey}
           initialState={buildFetchParams()}

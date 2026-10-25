@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../db');
 const { recordAudit } = require('../lib/audit');
 const { normalizeSupplierName } = require('../lib/normalizeSupplierName');
+const { supplierNameMatch } = require('../lib/supplierMatch');
 
 const router = express.Router();
 const MAX_PAGE_SIZE = 200;
@@ -18,15 +19,17 @@ router.get('/', async (req, res, next) => {
   try {
     const q = req.query.q || '';
 
-    // Plain autocomplete mode (unchanged): bare array, top 20, active only.
+    const match = supplierNameMatch(q, 'suppliers');
+
+    // Plain autocomplete mode: bare array, top 20, active only.
     if (req.query.page === undefined) {
       const [rows] = await pool.query(
         `SELECT id, name, normalized_name, category, is_active
          FROM suppliers
-         WHERE is_active = 1 AND (name LIKE ? OR normalized_name LIKE ?)
+         WHERE is_active = 1 AND ${match.sql}
          ORDER BY name
          LIMIT 20`,
-        [`%${q}%`, `%${q}%`]
+        match.params
       );
       return res.json(rows);
     }
@@ -38,8 +41,8 @@ router.get('/', async (req, res, next) => {
     const where = [];
     const params = [];
     if (q) {
-      where.push('(name LIKE ? OR normalized_name LIKE ?)');
-      params.push(`%${q}%`, `%${q}%`);
+      where.push(match.sql);
+      params.push(...match.params);
     }
     if (req.query.is_active !== undefined) {
       where.push('is_active = ?');

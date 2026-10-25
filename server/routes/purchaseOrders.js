@@ -7,6 +7,7 @@ const { recordAudit } = require('../lib/audit');
 const { upload, poUploadDir } = require('../lib/poAttachmentStorage');
 const { toDecimalOrNull, isPositiveAmount } = require('../lib/money');
 const { resolvePlanningLineIdsWithDescendants } = require('../lib/planningLines');
+const { supplierNameMatch } = require('../lib/supplierMatch');
 
 const router = express.Router();
 
@@ -209,8 +210,14 @@ router.get('/:id/purchase-orders', async (req, res, next) => {
       params.push(req.query.date_to);
     }
     if (req.query.q) {
-      where.push('(v.por_no LIKE ? OR po.item_description LIKE ?)');
-      params.push(`%${req.query.q}%`, `%${req.query.q}%`);
+      // Supplier name too -- the supplier dropdown matches one exact record,
+      // so a PO filed under a variant spelling was findable by PO no. only.
+      const supplier = supplierNameMatch(req.query.q);
+      where.push(
+        `(v.por_no LIKE ? OR po.item_description LIKE ?
+          OR po.supplier_id IN (SELECT s.id FROM suppliers s WHERE ${supplier.sql}))`
+      );
+      params.push(`%${req.query.q}%`, `%${req.query.q}%`, ...supplier.params);
     }
     // balance_php is computed live by v_po_balance -- the stored status column
     // can go stale as payments are added, so "outstanding" filters on balance

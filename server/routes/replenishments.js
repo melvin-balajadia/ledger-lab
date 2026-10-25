@@ -5,6 +5,7 @@ const pool = require('../db');
 const { recordAudit } = require('../lib/audit');
 const { isPositiveAmount } = require('../lib/money');
 const { resolvePlanningLineIdsWithDescendants } = require('../lib/planningLines');
+const { supplierNameMatch } = require('../lib/supplierMatch');
 
 const router = express.Router();
 
@@ -113,8 +114,12 @@ router.get('/:id/replenishments', async (req, res, next) => {
       params.push(req.query.date_to);
     }
     if (req.query.q) {
-      where.push('(r.item_description LIKE ? OR r.ref_no LIKE ?)');
-      params.push(`%${req.query.q}%`, `%${req.query.q}%`);
+      const supplier = supplierNameMatch(req.query.q);
+      where.push(
+        `(r.item_description LIKE ? OR r.ref_no LIKE ?
+          OR r.supplier_id IN (SELECT s.id FROM suppliers s WHERE ${supplier.sql}))`
+      );
+      params.push(`%${req.query.q}%`, `%${req.query.q}%`, ...supplier.params);
     }
     if (req.query.ref_type) {
       where.push('r.ref_type = ?');
