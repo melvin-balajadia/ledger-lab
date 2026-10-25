@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthMe, useLogout } from "../hooks/useAuth";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
 import { SITE_TITLE } from "../site.config";
 import { BackupButton } from "./BackupButton";
+import { Modal } from "./Modal";
 import {
   IconAlertCircle,
   IconBox,
@@ -42,8 +44,18 @@ export function Layout() {
   const { data: user } = useAuthMe();
   const logout = useLogout();
 
+  const [confirmLogout, setConfirmLogout] = useState(false);
+
   async function handleLogout() {
-    await logout.mutateAsync();
+    // Only clear local state and leave once the server has actually ended the
+    // session. Doing it optimistically would drop her table filters and send
+    // her to /login while the cookie is still live -- looking logged out
+    // while not being logged out.
+    try {
+      await logout.mutateAsync();
+    } catch {
+      return; // logout.error renders in the dialog; she can retry or cancel.
+    }
     clearAllTableStates();
     navigate("/login", { replace: true });
   }
@@ -89,7 +101,7 @@ export function Layout() {
               </div>
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={() => setConfirmLogout(true)}
                 className="rounded-sm border border-rule-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:border-danger hover:text-danger"
               >
                 Log out
@@ -130,6 +142,45 @@ export function Layout() {
       </header>
 
       <Outlet />
+
+      {confirmLogout && (
+        <Modal title="Log out?" onClose={() => setConfirmLogout(false)}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-ink-muted">
+              You'll be signed out{displayName ? ` as ${displayName}` : ""} and returned to the login screen. The
+              filters, sorting and page you have set on each table are cleared too.
+            </p>
+
+            {logout.error && (
+              <p className="rounded-sm border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
+                Couldn't log out ({logout.error.message}). You are still signed in.
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 border-t border-rule pt-3">
+              <button
+                type="button"
+                onClick={() => setConfirmLogout(false)}
+                disabled={logout.isPending}
+                className="rounded-sm border border-rule-strong bg-surface px-4 py-2 text-sm font-medium text-ink-muted hover:bg-surface-2 disabled:opacity-60"
+              >
+                Stay signed in
+              </button>
+              {/* Danger-outlined rather than a solid accent button: the header
+                  control this came from already hovers to danger, so the
+                  colour of the action stays the same as the way in. */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={logout.isPending}
+                className="rounded-sm border border-danger px-4 py-2 text-sm font-medium text-danger hover:bg-danger-soft disabled:opacity-60"
+              >
+                {logout.isPending ? "Logging out…" : "Log out"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

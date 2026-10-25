@@ -5,6 +5,7 @@ import { clientPaginate } from '../lib/clientPaginate';
 import { formatMoney, sumMoney } from '../lib/formatMoney';
 import { DataTable, type ColumnDef, type FetchParams } from '../components/DataTable';
 import { StatusPill } from '../components/StatusPill';
+import { HeaderLineSkeleton, StatGridSkeleton } from '../components/Skeleton';
 import type { WorkerPayrollEntry } from '../types';
 
 const columns: ColumnDef<WorkerPayrollEntry>[] = [
@@ -48,7 +49,12 @@ export function WorkerPayrollDetail() {
         ← Back to Payroll
       </Link>
 
-      {isLoading && <p className="text-[15px] text-ink-muted">Loading…</p>}
+      {isLoading && (
+        <>
+          <HeaderLineSkeleton />
+          <StatGridSkeleton count={2} gridClassName="sm:grid-cols-2" />
+        </>
+      )}
       {error && <p className="text-[15px] text-danger">Couldn't reach the API ({error.message}).</p>}
 
       {data && (

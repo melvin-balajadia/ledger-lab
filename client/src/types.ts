@@ -320,6 +320,8 @@ export interface POPayment {
   fx_rate: string;
   amount_php: string;
   pct_of_contract: string | null;
+  // Live, native-currency share; only on the PO detail response.
+  share_of_contract?: string | null;
   voucher_no: string | null;
   remarks: string | null;
   created_at: string;
@@ -363,6 +365,13 @@ export interface VoidedPurchaseOrder {
 export interface PurchaseOrderDetail extends PurchaseOrder {
   milestones: POPaymentTerm[];
   payments: POPayment[];
+  // Native contract currency, so the % lines up with the milestone schedule.
+  payment_totals: {
+    paid: string;
+    paid_pct: string | null;
+    unpaid: string;
+    unpaid_pct: string | null;
+  };
   retention: Retention | null;
   attachments: POAttachment[];
 }

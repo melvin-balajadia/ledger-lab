@@ -2,7 +2,8 @@ import { useState } from 'react';
 import Decimal from 'decimal.js';
 import { useRecordPayment } from '../hooks/usePurchaseOrders';
 import { useFxRates, suggestFxRate } from '../hooks/useFxRates';
-import { formatMoney } from '../lib/formatMoney';
+import { formatMoney, formatPercent } from '../lib/formatMoney';
+import { contractShare } from '../lib/contractShare';
 import type { PoPaymentType } from '../types';
 
 const PROJECT_DATE_MIN = '2025-01-01';
@@ -14,7 +15,20 @@ const PAYMENT_TYPES: PoPaymentType[] = [
 // Currency always matches the PO's contract currency -- a payment settling
 // in a different currency than what was contracted isn't a case this app's
 // source data has, so it's not a picker here, just carried through.
-export function RecordPaymentForm({ poId, currency }: { poId: number; currency: string }) {
+//
+// contractAmount and paidAmount are native (same currency as the amount
+// typed), so the preview matches what the saved row will show.
+export function RecordPaymentForm({
+  poId,
+  currency,
+  contractAmount,
+  paidAmount,
+}: {
+  poId: number;
+  currency: string;
+  contractAmount: string;
+  paidAmount: string;
+}) {
   const mutation = useRecordPayment();
   const [paidOn, setPaidOn] = useState('');
   const [paymentType, setPaymentType] = useState<PoPaymentType>('progress');
@@ -23,6 +37,7 @@ export function RecordPaymentForm({ poId, currency }: { poId: number; currency: 
   const [voucherNo, setVoucherNo] = useState('');
   const { data: fxRates } = useFxRates();
   const fxSuggestion = currency !== 'PHP' ? suggestFxRate(fxRates, currency, paidOn) : null;
+  const share = contractShare(amount, contractAmount, paidAmount);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -97,6 +112,14 @@ export function RecordPaymentForm({ poId, currency }: { poId: number; currency: 
           {mutation.isPending ? 'Saving…' : 'Record'}
         </button>
       </div>
+
+      {/* Warning only -- the server doesn't block overpayment, and neither does this. */}
+      {share && (
+        <p className={`text-xs ${share.exceeds ? 'text-danger' : 'text-ink-faint'}`}>
+          = {formatPercent(share.share)} of contract · cumulative {formatPercent(share.cumulative)}
+          {share.exceeds && ' — exceeds contract'}
+        </p>
+      )}
 
       {currency !== 'PHP' && (
         <div className="flex items-center gap-3">

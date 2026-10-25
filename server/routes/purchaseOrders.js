@@ -294,8 +294,35 @@ router.get('/:id/purchase-orders/:poId', async (req, res, next) => {
       'SELECT * FROM po_payment_terms WHERE purchase_order_id = ? ORDER BY seq',
       [req.params.poId]
     );
+    // Shares are native amount / native contract, not PHP: each payment
+    // carries its own FX rate (CLAUDE.md #7), so a peso ratio drifts off the
+    // agreed milestone % (a 20% USD downpayment reads 19.6%). For PHP POs the
+    // two are identical. Computed live rather than read from the stored
+    // po_payments.pct_of_contract, which only the ETL ever filled and which
+    // nothing updates when the contract amount is edited.
     const [payments] = await pool.query(
-      'SELECT * FROM po_payments WHERE purchase_order_id = ? AND voided_at IS NULL ORDER BY paid_on',
+      `SELECT pp.*, ROUND(pp.amount / NULLIF(po.contract_amount, 0), 6) AS share_of_contract
+       FROM po_payments pp JOIN purchase_orders po ON po.id = pp.purchase_order_id
+       WHERE pp.purchase_order_id = ? AND pp.voided_at IS NULL ORDER BY pp.paid_on`,
+      [req.params.poId]
+    );
+    // Same native basis. Unpaid still includes any retention tail -- retention
+    // is shown separately and never subtracted here (CLAUDE.md #8).
+    const [[paymentTotals]] = await pool.query(
+      `SELECT t.paid,
+              ROUND(t.paid / NULLIF(t.contract_amount, 0), 6) AS paid_pct,
+              t.unpaid,
+              ROUND(t.unpaid / NULLIF(t.contract_amount, 0), 6) AS unpaid_pct
+       FROM (
+         SELECT po.contract_amount,
+                COALESCE(SUM(pp.amount), 0) AS paid,
+                CASE WHEN po.status = 'cancelled' THEN 0
+                     ELSE po.contract_amount - COALESCE(SUM(pp.amount), 0) END AS unpaid
+         FROM purchase_orders po
+         LEFT JOIN po_payments pp ON pp.purchase_order_id = po.id AND pp.voided_at IS NULL
+         WHERE po.id = ?
+         GROUP BY po.id, po.contract_amount, po.status
+       ) t`,
       [req.params.poId]
     );
     // v_po_retention already filters to retention_pct > 0, so this is empty
@@ -310,7 +337,14 @@ router.get('/:id/purchase-orders/:poId', async (req, res, next) => {
       [req.params.poId]
     );
 
-    res.json({ ...rows[0], milestones, payments, retention: retentionRows[0] || null, attachments });
+    res.json({
+      ...rows[0],
+      milestones,
+      payments,
+      payment_totals: paymentTotals,
+      retention: retentionRows[0] || null,
+      attachments,
+    });
   } catch (err) {
     next(err);
   }

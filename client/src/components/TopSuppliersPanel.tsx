@@ -23,7 +23,7 @@ export function TopSuppliersPanel({ suppliers }: { suppliers: TopSupplier[] }) {
     <Panel
       title="Top suppliers by spend"
       subtitle="PO payments, replenishments, and additional payments combined"
-      action={<ExportButton rows={suppliers} columns={csvColumns(suppliers)} filename="top-suppliers" />}
+      action={<ExportButton rows={suppliers} columns={csvColumns(suppliers)} dataset="Top suppliers" scope="PO payments, replenishments and additional payments combined" />}
     >
       {suppliers.length === 0 ? (
         <p className="text-sm text-ink-faint">No supplier-attributed spend recorded yet.</p>

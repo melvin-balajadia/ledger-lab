@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { formatAmountCell, formatMoney, sumMoney } from '../lib/formatMoney';
 import { compareCodes } from '../lib/sortCodes';
 import { COST_CATEGORIES } from '../lib/costCategories';
 import { IconCheck, IconChevronRight } from './icons';
 import { Panel } from './Panel';
+import { ExportButton } from './ExportButton';
+import { type CsvColumn } from '../lib/exportCsv';
 import { JplTransactionsModal } from './JplTransactionsModal';
 import type { BudgetSummaryRow, WbsRow } from '../types';
 
@@ -37,6 +40,39 @@ const DEFAULT_LEDGERS = CASH_COLUMNS.map((c) => c.key as string);
 // summing it in double-counts any PO that's been partially paid.
 const TOGGLEABLE = [...CASH_COLUMNS, CONTRACT_COLUMN];
 const TOGGLE_KEYS = TOGGLEABLE.map((c) => c.key as string);
+
+// One row per JPL code, with the budget item it sits under as a column --
+// the group subtotals and the grand total are left out for the same reason
+// RetentionPanel leaves its header totals out: they are column sums, and
+// mixing them in breaks the single-table shape that makes a CSV useful.
+//
+// "Total cash out" is total_spend off v_planning_line_spend, i.e. always all
+// five ledgers -- NOT the on-screen "Selected total". The Include chips only
+// preselect which columns are ticked in the export dialog; they must never
+// change what a column headed "Total cash out" actually contains.
+type JplExportRow = WbsRow & { budget_item: string };
+
+// key is pinned to keyof JplExportRow: every column here is a real field, so
+// a typo should be a compile error rather than a silently blank column in
+// her spreadsheet. (CsvColumn.key is a loose string because DataTable also
+// passes dotted paths.)
+const CSV_COLUMNS: (CsvColumn<JplExportRow> & { key: keyof JplExportRow })[] = [
+  { key: 'budget_item', label: 'Budget item' },
+  { key: 'code', label: 'JPL code' },
+  // Every code has an empty description in the source (CLAUDE.md) -- the
+  // column ships anyway, blank, rather than inventing a label.
+  { key: 'description', label: 'Description' },
+  { key: CONTRACT_KEY, label: 'Contract' },
+  ...COST_CATEGORIES.map((c) => ({ key: c.column, label: c.label })),
+  { key: 'total_spend', label: 'Total cash out' },
+];
+
+// Recorded in the JSON export header. Both facts change how the file reads
+// and neither is recoverable from the rows themselves.
+function exportScope(codeCount: number, hidden: number): string {
+  const base = `${codeCount} codes with activity` + (hidden > 0 ? ` (${hidden} with none omitted)` : '');
+  return `${base}; Total cash out covers all five ledgers`;
+}
 
 interface Group {
   key: string;
@@ -146,6 +182,44 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
 
   const allOpen = groups.length > 0 && expanded.size === groups.length;
 
+  // Flattened off `groups` rather than `active`, so the file comes out in
+  // exactly the order on screen: budget item, then code order.
+  const exportRows: JplExportRow[] = groups.flatMap((g) => g.rows.map((row) => ({ ...row, budget_item: g.label })));
+
+  // Printing expands every group and puts it back afterwards. A PDF showing
+  // 12 group rows under a heading that says "104 codes" is a report that
+  // silently under-states; the printout is a real deliverable (she reports
+  // these figures up a chain outside this app), so it has to carry all of it.
+  //
+  // Read through refs so the listeners can be registered once, and committed
+  // with flushSync because React would otherwise batch the state change past
+  // the browser's print snapshot and print the collapsed table anyway.
+  // Hooked to the events rather than to Overview's Print button so Ctrl+P
+  // produces the same document.
+  const groupKeysRef = useRef<string[]>([]);
+  groupKeysRef.current = groups.map((g) => g.key);
+  const expandedRef = useRef(expanded);
+  expandedRef.current = expanded;
+
+  useEffect(() => {
+    let restoreTo: Set<string> | null = null;
+    const onBefore = () => {
+      restoreTo = expandedRef.current;
+      flushSync(() => setExpanded(new Set(groupKeysRef.current)));
+    };
+    const onAfter = () => {
+      const previous = restoreTo;
+      restoreTo = null;
+      if (previous) flushSync(() => setExpanded(previous));
+    };
+    window.addEventListener('beforeprint', onBefore);
+    window.addEventListener('afterprint', onAfter);
+    return () => {
+      window.removeEventListener('beforeprint', onBefore);
+      window.removeEventListener('afterprint', onAfter);
+    };
+  }, []);
+
   function toggle(key: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -170,13 +244,31 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
       subtitle={`${active.length} codes · open a budget item to see its codes, a code to see its transactions`}
       bodyClassName="p-0"
       action={
-        <button
-          type="button"
-          onClick={() => setExpanded(allOpen ? new Set() : new Set(groups.map((g) => g.key)))}
-          className="text-[13px] font-medium text-accent hover:underline"
-        >
-          {allOpen ? 'Collapse all' : 'Expand all'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(allOpen ? new Set() : new Set(groups.map((g) => g.key)))}
+            className="text-[13px] font-medium text-accent hover:underline print:hidden"
+          >
+            {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
+          <ExportButton
+            rows={exportRows}
+            columns={CSV_COLUMNS}
+            dataset="Cost by JPL code"
+            // The chips preselect the ticked ledger columns; Contract is
+            // ticked because the table shows it whatever the chips say.
+            defaultSelected={[
+              'budget_item',
+              'code',
+              'description',
+              CONTRACT_KEY,
+              ...columns.map((c) => c.key as string),
+              'total_spend',
+            ]}
+            scope={exportScope(active.length, hiddenCount)}
+          />
+        </div>
       }
     >
       {/* Which ledgers count toward the total. Chips rather than a checkbox
@@ -274,14 +366,17 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
               <tbody key={group.key} className="border-t border-rule">
                 <tr className={isOpen ? 'bg-surface-2' : 'bg-surface hover:bg-surface-2'}>
                   <td className="px-4 py-2.5">
+                    {/* print-keep: this button is the budget-item label, not a
+                        control, and print hides <button> by default -- without
+                        it the whole first column prints blank. */}
                     <button
                       type="button"
                       onClick={() => toggle(group.key)}
                       aria-expanded={isOpen}
-                      className="flex items-center gap-2 text-left"
+                      className="print-keep flex items-center gap-2 text-left"
                     >
                       <IconChevronRight
-                        className={`h-3.5 w-3.5 shrink-0 text-ink-faint transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                        className={`h-3.5 w-3.5 shrink-0 text-ink-faint transition-transform print:hidden ${isOpen ? 'rotate-90' : ''}`}
                       />
                       <span className="font-display font-semibold text-ink">{group.label}</span>
                       <span className="text-[11px] text-ink-faint">{group.rows.length}</span>

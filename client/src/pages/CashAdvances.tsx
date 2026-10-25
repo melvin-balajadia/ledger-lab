@@ -22,6 +22,7 @@ import {
 import { SegmentedControl } from "../components/SegmentedControl";
 import { StatusPill } from "../components/StatusPill";
 import { SummaryStats } from "../components/SummaryStats";
+import { SummaryStatsError, SummaryStatsSkeleton } from "../components/Skeleton";
 import { BudgetItemBreakdown } from "../components/BudgetItemBreakdown";
 import { Button } from "../components/Button";
 import { Modal } from "../components/Modal";
@@ -124,6 +125,7 @@ export function CashAdvances() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDeleted, setShowDeleted] = useState(false);
   const [summary, setSummary] = useState<CashAdvanceSummary | null>(null);
+  const [summaryError, setSummaryError] = useState(false);
   const voidedQuery = useVoidedCashAdvances(showDeleted);
   const restoreMutation = useRestoreCashAdvance();
   const { syncToUrl, buildFetchParams } = useTableUrlState({ prefix: "ca", filterKeys: [], defaultPerPage: 10 });
@@ -149,12 +151,22 @@ export function CashAdvances() {
       if (filters.date_from) params.set("date_from", filters.date_from);
       if (filters.date_to) params.set("date_to", filters.date_to);
 
-      const json = await fetchJson<CashAdvanceListResponse>(
-        `/api/projects/${PROJECT_ID}/cash-advances?${params}`,
-        { signal },
-      );
-      setSummary(json.summary);
-      return { data: json.rows, meta: toPageMeta(json) };
+      try {
+        const json = await fetchJson<CashAdvanceListResponse>(
+          `/api/projects/${PROJECT_ID}/cash-advances?${params}`,
+          { signal },
+        );
+        setSummary(json.summary);
+        setSummaryError(false);
+        return { data: json.rows, meta: toPageMeta(json) };
+      } catch (err) {
+        // A stale request superseded by a newer one (rapid filter changes)
+        // is not a real failure -- only a genuine fetch error should replace
+        // the skeleton with the error state, or every keystroke in a filter
+        // would flash "couldn't load" for a request that was never wrong.
+        if (!signal?.aborted) setSummaryError(true);
+        throw err;
+      }
     },
     [filters, needsReviewOnly, unassignedOnly, syncToUrl],
   );
@@ -200,7 +212,7 @@ export function CashAdvances() {
         </div>
       </div>
 
-      {summary && (
+      {summary ? (
         <SummaryStats
           stats={[
             { label: "Total advanced", value: formatMoney(summary.total_amount) },
@@ -213,6 +225,10 @@ export function CashAdvances() {
             },
           ]}
         />
+      ) : summaryError ? (
+        <SummaryStatsError />
+      ) : (
+        <SummaryStatsSkeleton />
       )}
 
       <BudgetItemBreakdown

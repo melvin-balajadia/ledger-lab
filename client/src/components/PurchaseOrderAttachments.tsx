@@ -3,6 +3,7 @@ import { fetchImageUrl } from '../lib/api';
 import { useDeleteAttachment, useUploadAttachment } from '../hooks/usePurchaseOrders';
 import { PROJECT_ID } from '../hooks/useProjectData';
 import { Modal } from './Modal';
+import { Skeleton } from './Skeleton';
 import { IconFileText } from './icons';
 import type { POAttachment } from '../types';
 
@@ -130,7 +131,7 @@ function AttachmentThumb({
           <img src={url} alt={attachment.original_name} className="h-full w-full object-cover" />
         </button>
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs text-ink-faint">Loading…</div>
+        <Skeleton className="h-full w-full rounded-none" />
       )}
       <button
         type="button"
@@ -146,7 +147,7 @@ function AttachmentThumb({
 
 function AttachmentFullView({ poId, attachment }: { poId: number; attachment: POAttachment }) {
   const url = useAttachmentFileUrl(poId, attachment.id);
-  if (!url) return <p className="text-sm text-ink-muted">Loading…</p>;
+  if (!url) return <Skeleton className="h-[75vh] w-full" />;
   if (attachment.content_type === PDF_TYPE) {
     // Browser's built-in PDF viewer, same as opening a PDF directly -- zoom,
     // print, and download come for free, no PDF-rendering library needed.

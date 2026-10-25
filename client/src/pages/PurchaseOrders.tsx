@@ -15,6 +15,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { ProgressBar } from '../components/ProgressBar';
 import { StatusPill } from '../components/StatusPill';
 import { SummaryStats } from '../components/SummaryStats';
+import { SummaryStatsError, SummaryStatsSkeleton } from '../components/Skeleton';
 import { BudgetItemBreakdown } from '../components/BudgetItemBreakdown';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -90,6 +91,7 @@ export function PurchaseOrders() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showDeleted, setShowDeleted] = useState(false);
   const [summary, setSummary] = useState<PurchaseOrderSummary | null>(null);
+  const [summaryError, setSummaryError] = useState(false);
   const voidedQuery = useVoidedPurchaseOrders(showDeleted);
   const restoreMutation = useRestorePurchaseOrder();
   // Retention held is never folded into the contract/paid/balance totals
@@ -119,12 +121,22 @@ export function PurchaseOrders() {
       if (filters.date_from) params.set('date_from', filters.date_from);
       if (filters.date_to) params.set('date_to', filters.date_to);
 
-      const json = await fetchJson<PurchaseOrderListResponse>(
-        `/api/projects/${PROJECT_ID}/purchase-orders?${params}`,
-        { signal },
-      );
-      setSummary(json.summary);
-      return { data: json.rows, meta: toPageMeta(json) };
+      try {
+        const json = await fetchJson<PurchaseOrderListResponse>(
+          `/api/projects/${PROJECT_ID}/purchase-orders?${params}`,
+          { signal },
+        );
+        setSummary(json.summary);
+        setSummaryError(false);
+        return { data: json.rows, meta: toPageMeta(json) };
+      } catch (err) {
+        // A stale request superseded by a newer one (rapid filter changes)
+        // is not a real failure -- only a genuine fetch error should replace
+        // the skeleton with the error state, or every keystroke in a filter
+        // would flash "couldn't load" for a request that was never wrong.
+        if (!signal?.aborted) setSummaryError(true);
+        throw err;
+      }
     },
     [filters, outstandingOnly, unassignedOnly, syncToUrl],
   );
@@ -173,7 +185,7 @@ export function PurchaseOrders() {
         </div>
       </div>
 
-      {summary && (
+      {summary ? (
         <SummaryStats
           stats={[
             { label: 'Total contract', value: formatMoney(summary.total_contract) },
@@ -187,6 +199,10 @@ export function PurchaseOrders() {
               : undefined
           }
         />
+      ) : summaryError ? (
+        <SummaryStatsError />
+      ) : (
+        <SummaryStatsSkeleton />
       )}
 
       <BudgetItemBreakdown

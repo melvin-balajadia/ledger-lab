@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from './Modal';
+import { Skeleton } from './Skeleton';
 
 // Shared shape for the "Deleted items" panel across replenishments, payroll
 // entries, and purchase orders -- a voided row disappears from every list
@@ -49,7 +50,14 @@ export function DeletedItemsModal<T extends { id: number }>({
   return (
     <Modal title={title} onClose={onClose}>
       {isLoading ? (
-        <p className="text-sm text-ink-muted">Loading…</p>
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 border-b border-rule pb-3">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-14" />
+            </div>
+          ))}
+        </div>
       ) : !items || items.length === 0 ? (
         <p className="text-sm text-ink-faint">Nothing deleted.</p>
       ) : (

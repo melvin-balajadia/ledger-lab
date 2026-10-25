@@ -3,6 +3,7 @@ import { useUnassignedPayrollEntries } from '../hooks/usePayroll';
 import { formatMoney } from '../lib/formatMoney';
 import { InlineJplCell } from './InlineJplCell';
 import { Modal } from './Modal';
+import { Skeleton } from './Skeleton';
 
 // Picking a code here PATCHes the entry directly (InlineJplCell, same as the
 // period detail page) -- the row drops off this list on its own once
@@ -17,7 +18,13 @@ export function UnassignedPayrollEntriesModal({ onClose }: { onClose: () => void
         where it belongs.
       </p>
 
-      {isLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+      {isLoading && (
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-4" />
+          ))}
+        </div>
+      )}
 
       {entries && entries.length === 0 && <p className="text-sm text-ink-muted">Nothing unassigned right now.</p>}
 

@@ -9,6 +9,7 @@ import { BudgetItemDetailsForm } from '../components/BudgetItemDetailsForm';
 import { WbsTable } from '../components/WbsTable';
 import { PlanningLineForm } from '../components/PlanningLineForm';
 import { Button } from '../components/Button';
+import { HeaderLineSkeleton, PanelSkeleton, Skeleton, StatGridSkeleton } from '../components/Skeleton';
 import { Modal } from '../components/Modal';
 import type { PlanningLine, WbsRow } from '../types';
 
@@ -37,7 +38,13 @@ export function BudgetItemDetail() {
         ← Back to Overview
       </Link>
 
-      {isLoading && <p className="text-[15px] text-ink-muted">Loading…</p>}
+      {isLoading && (
+        <>
+          <HeaderLineSkeleton />
+          <StatGridSkeleton count={4} gridClassName="sm:grid-cols-2 lg:grid-cols-4" />
+          <PanelSkeleton lines={4} />
+        </>
+      )}
       {error && <p className="text-[15px] text-danger">Couldn't reach the API ({error.message}).</p>}
 
       {item && (
@@ -95,7 +102,13 @@ export function BudgetItemDetail() {
                 + New line
               </Button>
             </div>
-            {wbsLoading && <p className="text-sm text-ink-muted">Loading…</p>}
+            {wbsLoading && (
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-4" style={{ width: `${70 - i * 8}%` }} />
+                ))}
+              </div>
+            )}
             {wbsRows && (
               <WbsTable
                 rows={wbsRows}

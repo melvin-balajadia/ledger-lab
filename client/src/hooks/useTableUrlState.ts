@@ -198,6 +198,13 @@ export function useTableUrlState({
 
   // ── syncToUrl — called by fetchData on every table state change ────────
   const syncToUrl = useCallback((params: FetchParams) => {
+    // The export loop runs through the caller's same fetchData closure, so
+    // it lands here too -- once per 200-row page. Mirroring that would
+    // rewrite sessionStorage and the address bar to the last export page at
+    // per_page=200, and a refresh afterwards would drop her onto a view she
+    // never navigated to. An export is not navigation; nothing to persist.
+    if (params.forExport) return;
+
     const pfx = prefixRef.current;
     const fKeys = filterKeysRef.current;
     const defPerPage = defaultPerPageRef.current;

@@ -14,6 +14,7 @@ import { formatMoney } from '../lib/formatMoney';
 import { DataTable, type ColumnDef, type FetchParams } from '../components/DataTable';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { StatusPill } from '../components/StatusPill';
+import { HeaderLineSkeleton, StatGridSkeleton } from '../components/Skeleton';
 import { ReconciliationBadge } from '../components/ReconciliationBadge';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
@@ -126,7 +127,12 @@ export function PayrollPeriodDetail() {
         ← Back to Payroll
       </Link>
 
-      {isLoading && <p className="text-[15px] text-ink-muted">Loading…</p>}
+      {isLoading && (
+        <>
+          <HeaderLineSkeleton />
+          <StatGridSkeleton count={3} gridClassName="sm:grid-cols-3" />
+        </>
+      )}
       {error && <p className="text-[15px] text-danger">Couldn't reach the API ({error.message}).</p>}
 
       {period && (

@@ -16,6 +16,7 @@ import { WeeklyBurnPanel } from '../components/WeeklyBurnPanel';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { Panel } from '../components/Panel';
 import { PrintOptionsModal } from '../components/PrintOptionsModal';
+import { KpiCardsSkeleton, PanelSkeleton } from '../components/Skeleton';
 import { BudgetItemForm } from '../components/BudgetItemForm';
 import { Modal } from '../components/Modal';
 import { IconPrinter } from '../components/icons';
@@ -88,7 +89,26 @@ export function Overview() {
 
   return (
     <div className="flex flex-col gap-6">
-      {isLoading && <p className="text-[15px] text-ink-muted">Loading…</p>}
+      {/* Shaped like the real Overview below, in the same order and the same
+          grids, so nothing jumps when the data lands. Only the sections that
+          always render are mimicked -- VAT, JPL, retention and suppliers are
+          conditional on their own queries, and a placeholder for a panel that
+          may never appear would be a worse lie than a shorter page. */}
+      {isLoading && (
+        <>
+          <KpiCardsSkeleton />
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[2fr_1fr]">
+            <PanelSkeleton lines={6} bodyHeight="16rem" />
+            <PanelSkeleton lines={3} bodyHeight="16rem" />
+          </div>
+          <PanelSkeleton lines={5} bodyHeight="12rem" />
+          <PanelSkeleton lines={8} />
+          <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+            <PanelSkeleton lines={5} />
+            <PanelSkeleton lines={5} />
+          </div>
+        </>
+      )}
 
       {error && (
         <p className="text-[15px] text-danger">

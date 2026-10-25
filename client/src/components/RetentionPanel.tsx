@@ -8,7 +8,9 @@ import type { RetentionPo, RetentionSummary } from '../types';
 // text. The three header totals are deliberately left out -- they are just
 // column sums, and mixing them into the same file would break the single-table
 // shape that makes a CSV useful.
-const CSV_COLUMNS: CsvColumn<RetentionPo>[] = [
+// key is pinned to keyof: every column here is a real field, so a typo is a
+// compile error rather than a silently blank column in her spreadsheet.
+const CSV_COLUMNS: (CsvColumn<RetentionPo> & { key: keyof RetentionPo })[] = [
   { key: 'por_no', label: 'PO No.' },
   { key: 'supplier', label: 'Supplier' },
   { key: 'retention_pct', label: 'Retention rate' },
@@ -26,7 +28,7 @@ export function RetentionPanel({ data }: { data: RetentionSummary }) {
     <Panel
       title="Retention held"
       subtitle="Not a payable — held until the milestone is reached, never counted in an outstanding balance"
-      action={<ExportButton rows={data.pos} columns={CSV_COLUMNS} filename="retention-held" />}
+      action={<ExportButton rows={data.pos} columns={CSV_COLUMNS} dataset="Retention held" scope="Purchase orders carrying a holdback" />}
     >
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Held" value={formatMoney(data.total_held)} />

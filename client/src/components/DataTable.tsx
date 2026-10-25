@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Modal } from "./Modal";
-import { buildCsv, downloadCsv } from "../lib/exportCsv";
+import { ExportDialog, type ExportCollectContext } from "./ExportDialog";
+import { fetchAllPages } from "../lib/exportCsv";
 import {
   IconPenLine,
   IconTrash,
@@ -75,6 +75,14 @@ export interface FetchParams {
   filters: Record<string, string>;
   // FIX #2: expose the abort signal so callers can cancel in-flight requests
   signal?: AbortSignal;
+  /**
+   * Set only by the export loop. A caller whose fetchData has side effects
+   * tied to user navigation -- useTableUrlState.syncToUrl is the one in this
+   * app -- must skip them when this is true: the export pages through at 200
+   * rows a page, and mirroring that to the URL/sessionStorage rewrote the
+   * table state she was actually looking at.
+   */
+  forExport?: boolean;
 }
 
 export interface DataTableProps<T extends { [key: string]: unknown }> {
@@ -126,37 +134,19 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Raw values, not col.render output -- rendered values may contain JSX
-// elements, icons, or badges that stringify to unreadable text in a CSV.
-// Quoting/escaping/BOM handling lives in lib/exportCsv so the hand-rolled
-// tables that aren't DataTables share one implementation.
-function exportToCSV<T extends Record<string, unknown>>(
-  rows: T[],
-  columns: ColumnDef<T>[],
-  filename: string,
-) {
-  const visibleCols = columns.filter((c) => !c.hidden);
-  const csv = buildCsv(
-    rows,
-    visibleCols.map((c) => ({
-      key: c.key as string,
-      label: c.label,
-      // Nested keys ("a.b") are supported on screen via get(), so the export
-      // has to resolve them the same way rather than a flat property read.
-      csvValue: (row: T) => get(row, c.key as string) as string | number | null | undefined,
-    })),
-  );
-  downloadCsv(csv, filename);
-}
-
 // FIX #3: stable skeleton widths — avoids hydration mismatches in Next.js
 // and prevents width from re-randomizing on every render.
 const SKELETON_WIDTHS = ["60%", "75%", "55%", "80%", "65%", "70%"];
 
-// Every paginated server route caps pageSize at 200 (see MAX_PAGE_SIZE in
-// server/routes/*.js) -- exporting the full filtered set means paging
-// through in chunks this size, not just grabbing the currently-loaded page.
-const EXPORT_PAGE_SIZE = 200;
+// Recorded in the JSON export header so a file found six months later says
+// what it was a slice of, rather than looking like the whole table.
+function describeScope(search: string, filters: Record<string, string>): string | undefined {
+  const parts = [
+    ...(search ? [`search "${search}"`] : []),
+    ...Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`),
+  ];
+  return parts.length ? parts.join(", ") : undefined;
+}
 
 // ─── Sort Icon ──────────────────────────────────────────────────────────────
 
@@ -630,12 +620,7 @@ export function DataTable<T extends { [key: string]: unknown }>({
   const [columns, setColumns] = useState(initialColumns);
   const [colPickerOpen, setColPickerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"auto" | "table" | "cards">("auto");
-  const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [exportSelectedKeys, setExportSelectedKeys] = useState<Set<string>>(
-    new Set(),
-  );
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   // Snapshot of the mount-time values, captured once (useRef's initializer
@@ -743,60 +728,24 @@ export function DataTable<T extends { [key: string]: unknown }>({
       prev.map((c) => (c.key === key ? { ...c, hidden: !c.hidden } : c)),
     );
 
-  const openExportModal = () => {
-    setExportSelectedKeys(
-      new Set(
-        columns.filter((c) => !c.hidden).map((c) => c.key as string),
-      ),
-    );
-    setExportError(null);
-    setExportModalOpen(true);
-  };
-
-  const toggleExportColumn = (key: string) =>
-    setExportSelectedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
   // Pages through every row matching the current search/filter/sort --
   // `rows` in state is only the currently-displayed page, so exporting that
-  // silently truncates to one page's worth (e.g. 25 of 256 records).
-  const handleExport = async () => {
-    setExporting(true);
-    setExportError(null);
-    try {
-      let allRows: T[] = [];
-      let exportPage = 1;
-      for (;;) {
-        const result = await fetchData({
-          page: exportPage,
-          perPage: EXPORT_PAGE_SIZE,
-          search: debouncedSearch,
-          sortKey,
-          sortDir,
-          filters,
-        });
-        allRows = allRows.concat(result.data);
-        if (result.data.length === 0 || allRows.length >= result.meta.total) {
-          break;
-        }
-        exportPage++;
-      }
-      const exportColumns = columns.map((c) => ({
-        ...c,
-        hidden: !exportSelectedKeys.has(c.key as string),
-      }));
-      exportToCSV(allRows, exportColumns, title ?? "export");
-      setExportModalOpen(false);
-    } catch {
-      setExportError("Export failed. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  };
+  // silently truncated to one page (25 of 3,822 payroll entries).
+  //
+  // forExport tells the caller's fetchData this is not a user navigation:
+  // it runs through the same closure as the on-screen table, and that
+  // closure calls syncToUrl(), which was rewriting sessionStorage and the
+  // address bar to page=N&per_page=200 -- a refresh after an export landed
+  // her on the last page of a 200-row view she never asked for.
+  const collectExportRows = useCallback(
+    ({ signal, onProgress }: ExportCollectContext) =>
+      fetchAllPages<T>(
+        (page, perPage) =>
+          fetchData({ page, perPage, search: debouncedSearch, sortKey, sortDir, filters, signal, forExport: true }),
+        { signal, onProgress },
+      ),
+    [fetchData, debouncedSearch, sortKey, sortDir, filters],
+  );
 
   const applyFilters = () => {
     setFilters(pendingFilters);
@@ -1125,9 +1074,9 @@ export function DataTable<T extends { [key: string]: unknown }>({
           {exportable && (
             <button
               type="button"
-              onClick={openExportModal}
+              onClick={() => setExportOpen(true)}
               disabled={meta.total === 0}
-              title="Export CSV"
+              title="Export…"
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-sm border border-rule-strong text-ink-muted bg-surface hover:bg-surface-2 transition-colors font-medium disabled:opacity-50"
             >
               <IconDownload className="w-3.5 h-3.5" />
@@ -1420,61 +1369,18 @@ export function DataTable<T extends { [key: string]: unknown }>({
         </div>
       </div>
 
-      {exportModalOpen && (
-        <Modal
-          title="Columns to export"
-          onClose={() => (!exporting ? setExportModalOpen(false) : undefined)}
-        >
-          <div className="flex flex-col gap-3">
-            {exportError && (
-              <p className="rounded-sm border border-danger bg-danger-soft px-3 py-2 text-xs text-danger">
-                {exportError}
-              </p>
-            )}
-            <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto border-y border-rule py-2">
-              {columns.map((col) => {
-                const key = col.key as string;
-                const checked = exportSelectedKeys.has(key);
-                return (
-                  <label
-                    key={key}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-sm px-1 py-1.5 text-sm text-ink hover:bg-surface-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleExportColumn(key)}
-                      className="h-4 w-4 rounded border-rule-strong text-accent focus:ring-accent"
-                    />
-                    {col.label}
-                  </label>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setExportSelectedKeys(
-                    new Set(columns.map((c) => c.key as string)),
-                  )
-                }
-                disabled={exporting}
-                className="rounded-sm border border-rule-strong px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-2 disabled:opacity-50"
-              >
-                Select all
-              </button>
-              <button
-                type="button"
-                onClick={handleExport}
-                disabled={exporting || exportSelectedKeys.size === 0}
-                className="rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-60"
-              >
-                {exporting ? "Exporting…" : `Export (${meta.total.toLocaleString()})`}
-              </button>
-            </div>
-          </div>
-        </Modal>
+      {exportOpen && (
+        <ExportDialog<T>
+          dataset={title ?? "records"}
+          // Hidden columns stay listed but unticked -- she can add one back
+          // for a file without un-hiding it on screen.
+          columns={columns.map((c) => ({ key: c.key as string, label: c.label }))}
+          defaultSelected={columns.filter((c) => !c.hidden).map((c) => c.key as string)}
+          estimatedRows={meta.total}
+          scope={describeScope(debouncedSearch, filters)}
+          collect={collectExportRows}
+          onClose={() => setExportOpen(false)}
+        />
       )}
     </div>
   );

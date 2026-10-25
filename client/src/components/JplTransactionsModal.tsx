@@ -2,6 +2,8 @@ import { useWbsTransactions } from '../hooks/useWbs';
 import { formatMoney, sumMoney } from '../lib/formatMoney';
 import { Modal } from './Modal';
 import { StatusPill } from './StatusPill';
+import { ExportButton } from './ExportButton';
+import { type CsvColumn } from '../lib/exportCsv';
 import type { WbsRow, WbsTransaction } from '../types';
 
 // What is actually inside one JPL code, summarised per ledger first and then
@@ -13,6 +15,31 @@ import type { WbsRow, WbsTransaction } from '../types';
 // matches the column order on the Cost by JPL code panel so the two read the
 // same way round.
 const LEDGER_ORDER = ['Replenishment', 'PO Paid', 'Cash Advance', 'Additional Payment', 'Payroll'];
+
+// Every transaction behind one code, flat, in the order the modal lists
+// them: contract awards first, then each ledger.
+//
+// `kind` leads the file on purpose. Contract rows are a commitment and cash
+// rows are money out (CLAUDE.md rule #1) -- a spreadsheet that has lost that
+// column can sum the two together, which is the single worst thing an export
+// from this app could enable. The two subtotals are left out for the usual
+// reason: they are column sums, and one table per file is what makes a CSV
+// summable.
+const CSV_COLUMNS: (CsvColumn<WbsTransaction> & { key: keyof WbsTransaction })[] = [
+  { key: 'kind', label: 'Kind' },
+  { key: 'source', label: 'Ledger' },
+  { key: 'txn_date', label: 'Date' },
+  { key: 'reference', label: 'Reference' },
+  { key: 'party', label: 'Party' },
+  { key: 'description', label: 'Description' },
+  { key: 'amount', label: 'Amount' },
+  {
+    key: 'needs_review',
+    label: 'Needs review',
+    // 0/1 reads as an amount in a spreadsheet column; the flag is the point.
+    csvValue: (t) => (t.needs_review === 1 ? 'Yes' : 'No'),
+  },
+];
 
 function byLedger(rows: WbsTransaction[]) {
   const groups = new Map<string, WbsTransaction[]>();
@@ -48,6 +75,8 @@ export function JplTransactionsModal({
   const cashRows = data?.filter((t) => t.kind === 'disbursement') ?? [];
   const ledgers = byLedger(cashRows);
   const cashTotal = sumMoney(cashRows.map((t) => t.amount));
+  // Same order as the tables below, so the file and the screen agree.
+  const exportRows = [...contractRows, ...ledgers.flatMap((l) => l.items)];
 
   return (
     <Modal title={row.description ? `${row.code} — ${row.description}` : `JPL ${row.code}`} onClose={onClose}>
@@ -56,6 +85,17 @@ export function JplTransactionsModal({
           <Figure label="Committed (POs)" value={expectedContract} />
           <Figure label="Cash out" value={expectedDisbursed} />
         </div>
+
+        {exportRows.length > 0 && (
+          <div className="flex justify-end">
+            <ExportButton
+              rows={exportRows}
+              columns={CSV_COLUMNS}
+              dataset={`JPL ${row.code} transactions`}
+              scope={`Code ${row.code}; committed ${expectedContract}, cash out ${expectedDisbursed}. Contract rows are a commitment, never add them to the cash rows.`}
+            />
+          </div>
+        )}
 
         {isLoading && <p className="text-sm text-ink-muted">Loading transactions…</p>}
         {error && <p className="text-sm text-danger">Couldn't load transactions ({error.message}).</p>}

@@ -9,7 +9,9 @@ import type { BudgetSummaryRow } from '../types';
 // Raw DECIMAL strings, unformatted -- a spreadsheet should receive numbers it
 // can sum, not "₱1,333,876,003.00" strings it treats as text. commitment_ratio
 // is emitted as the stored fraction for the same reason.
-const CSV_COLUMNS: CsvColumn<BudgetSummaryRow>[] = [
+// key is pinned to keyof: every column here is a real field, so a typo is a
+// compile error rather than a silently blank column in her spreadsheet.
+const CSV_COLUMNS: (CsvColumn<BudgetSummaryRow> & { key: keyof BudgetSummaryRow })[] = [
   { key: 'item_no', label: 'Item' },
   { key: 'description', label: 'Description' },
   { key: 'budget', label: 'Budget' },
@@ -35,7 +37,7 @@ export function BudgetTable({
       title="Budget vs. actual"
       action={
         <div className="flex items-center gap-2">
-          <ExportButton rows={rows} columns={CSV_COLUMNS} filename="budget-vs-actual" />
+          <ExportButton rows={rows} columns={CSV_COLUMNS} dataset="Budget vs actual" scope="All budget items" />
           {/* This is the only screen listing every budget item, so it's where
               adding one belongs -- print:hidden because it's a control, not
               content (same reason the Overview's print button is excluded). */}

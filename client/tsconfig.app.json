@@ -20,5 +20,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Tests run under node --test with type stripping (npm test), not through
+  // the app build -- typechecking them here would need @types/node in a DOM
+  // config, which changes setTimeout's return type app-wide.
+  "exclude": ["src/**/*.test.ts"]
 }

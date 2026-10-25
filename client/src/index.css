@@ -96,6 +96,19 @@ body {
   font-family: var(--font-sans);
 }
 
+/* BrandLoader.tsx: the three-bar mark pulsing as an equalizer. Keyframes
+   live here rather than inline because a CSS animation can only be named
+   from a stylesheet, and the reduced-motion block below switches it off. */
+@keyframes ledgerlab-loader-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
@@ -163,6 +176,15 @@ body {
     display: none !important;
   }
 
+  /* ...except a button that IS content rather than a control.  The Cost by
+     JPL code panel wraps each budget-item label in a <button> to make the
+     group expandable, so the blanket rule above printed that entire column
+     blank -- every row a set of figures with nothing saying which item they
+     belonged to.  These render as plain text on paper. */
+  button.print-keep {
+    display: inline-flex !important;
+  }
+
   /* Keep panels and table rows whole rather than split across a page break --
      half a figure at the foot of a page is worse than a shorter page. */
   tr,
@@ -183,6 +205,21 @@ body {
     page-break-inside: auto;
   }
 
+  /* ...and a card that spans pages can't keep its card chrome. The rounded
+     border is one box around the whole panel, so on a four-page table it
+     drew two vertical rules down every page and left the bottom edge hanging
+     open mid-page. Panels that break lose the outer box and keep a single
+     rule under the header, which is what actually separates sections on
+     paper. Panels that fit on one page keep their border. */
+  .shadow-card:has(table) {
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .shadow-card:has(table) > div:first-child {
+    border-bottom: 1px solid var(--color-rule-strong) !important;
+  }
+
   /* A panel allowed to break internally (above) can otherwise break right
      between its own header and body, orphaning the title alone at the foot
      of a page (this happened to "Retention held"). Pin the header so a
@@ -194,23 +231,136 @@ body {
   }
 
   /* Screen scroll containers must expand on paper or they clip to the
-     viewport width and silently drop right-hand columns. */
+     viewport and silently drop rows and right-hand columns -- and the
+     scrollbar itself renders into the PDF as a grey stripe.  The Cost by
+     JPL code panel uses plain overflow-auto with a max-height, which the
+     earlier x/y-only list did not match: it printed ~12 of 104 codes with a
+     scrollbar down the side.  .overflow-hidden is deliberately NOT here --
+     the stacked mix bar relies on it to clip its own rounded corners. */
+  .overflow-auto,
   .overflow-x-auto,
-  .overflow-y-auto {
+  .overflow-y-auto,
+  .overflow-scroll,
+  .overflow-x-scroll,
+  .overflow-y-scroll {
     overflow: visible !important;
     max-height: none !important;
   }
 
-  /* min-w-* on wide tables forces horizontal overflow off the page edge. */
+  html,
+  body {
+    overflow: visible !important;
+  }
+
+  /* Recharts' ResponsiveContainer measures the SCREEN and writes that pixel
+     width onto its wrapper and <svg>. On paper that inline width is wider
+     than the page, and because the charts sit in the same column flow as
+     everything else it dragged the whole document past the right edge --
+     which is what cut the "Commitment" column off Budget vs. actual and the
+     right-hand weeks off the burn chart.
+
+     Clamped with an absolute max-width, NEVER a percentage: Recharts nests
+     .recharts-wrapper inside an unclassed sizing div that carries an inline
+     `width: 0px` (the wrapper only paints because Recharts also gives it an
+     explicit pixel width and the parent is overflow:visible). Any percentage
+     width in this subtree therefore resolves against 0 and the whole chart
+     collapses to nothing -- which is exactly what blanked every chart in the
+     PDF. max-width leaves a chart that already fits alone, and scales an
+     oversized one down through its viewBox.
+
+     186mm = A4 portrait (210mm) less the 12mm @page margins above. */
+  .recharts-responsive-container,
+  .recharts-wrapper,
+  .recharts-wrapper svg {
+    max-width: 186mm !important;
+  }
+
+  .recharts-wrapper svg {
+    height: auto !important;
+  }
+
+  /* min-w-* on wide tables forces horizontal overflow off the page edge.
+     table-layout stays auto so columns size to their content rather than to
+     the fixed track widths chosen for a 1180px screen. */
   table {
     min-width: 0 !important;
     width: 100% !important;
-    font-size: 10px;
+    table-layout: auto !important;
+    font-size: 9.5px;
   }
 
-  /* Sticky headers stack on top of body rows once the page is one long
-     document instead of a scroll container. */
-  thead th {
+  /* whitespace-nowrap is right on screen (the row scrolls sideways) and wrong
+     on paper (the text is simply cut). Wrapping at spaces keeps long supplier
+     and budget-item names whole; figures have no space to break at, so they
+     stay on one line. */
+  th,
+  td {
+    white-space: normal !important;
+    vertical-align: top;
+  }
+
+  /* Repeat column headers on every page a long table spills onto, and print
+     the totals row once at the end rather than at the foot of every page --
+     a grand total repeated mid-document reads as a subtotal. */
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-row-group;
+  }
+
+  /* Sticky headers and footers stack on top of body rows once the page is one
+     long document instead of a scroll container. The old rule only covered
+     `thead th`, so JplSummaryPanel -- which puts the class on <thead> and
+     <tfoot> themselves -- still printed its header floating over the figures
+     and its totals row out of place. */
+  .sticky,
+  thead,
+  tfoot,
+  th,
+  td {
     position: static !important;
+  }
+
+  /* truncate (overflow-hidden + ellipsis) is a screen affordance: on paper
+     there is no tooltip and no hover, so an ellipsis is just missing data.
+     "BEIJER REF SINGAPOR..." in Top suppliers was a real name lost this way. */
+  .truncate {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  /* Don't strand a section heading at the foot of a page. */
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Cost by JPL code puts each budget item in its own <tbody>, group row
+     first. Keep that group row with at least the start of its codes so a
+     page never ends on a heading whose rows are overleaf. */
+  tbody > tr:first-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Screen chrome that only wastes paper: the page gutter is already the
+     @page margin, and the app caps its width for readability on a monitor.
+     Dropping the side padding also gives the wide tables ~48px more to fit
+     into before anything has to wrap. */
+  .mx-auto {
+    max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
   }
 }
