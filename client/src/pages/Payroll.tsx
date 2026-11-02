@@ -230,14 +230,14 @@ export function Payroll() {
             <button
               type="button"
               onClick={() => setViewMode('periods')}
-              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'periods' ? 'bg-accent text-white' : 'text-ink-muted'}`}
+              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'periods' ? 'bg-accent text-on-accent' : 'text-ink-muted'}`}
             >
               By Week
             </button>
             <button
               type="button"
               onClick={() => setViewMode('workers')}
-              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'workers' ? 'bg-accent text-white' : 'text-ink-muted'}`}
+              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'workers' ? 'bg-accent text-on-accent' : 'text-ink-muted'}`}
             >
               By Worker
             </button>

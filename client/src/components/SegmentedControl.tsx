@@ -17,7 +17,7 @@ export function SegmentedControl<T extends string>({
           type="button"
           onClick={() => onChange(opt.value)}
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-            value === opt.value ? 'bg-accent text-white shadow-card' : 'text-ink-muted hover:text-ink'
+            value === opt.value ? 'bg-accent text-on-accent shadow-card' : 'text-ink-muted hover:text-ink'
           }`}
         >
           {opt.label}

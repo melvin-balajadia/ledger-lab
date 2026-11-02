@@ -525,7 +525,7 @@ function ViewToggle({
         title="Card view"
         onClick={() => onChange(viewMode === "cards" ? "auto" : "cards")}
         className={`px-2 py-1.5 flex items-center justify-center transition-colors ${
-          viewMode === "cards" ? "bg-accent text-white" : "text-ink-muted hover:bg-surface-2"
+          viewMode === "cards" ? "bg-accent text-on-accent" : "text-ink-muted hover:bg-surface-2"
         }`}
       >
         <IconGrid className="w-3.5 h-3.5" />
@@ -536,7 +536,7 @@ function ViewToggle({
         title="Table view"
         onClick={() => onChange(viewMode === "table" ? "auto" : "table")}
         className={`px-2 py-1.5 flex items-center justify-center transition-colors ${
-          viewMode === "table" ? "bg-accent text-white" : "text-ink-muted hover:bg-surface-2"
+          viewMode === "table" ? "bg-accent text-on-accent" : "text-ink-muted hover:bg-surface-2"
         }`}
       >
         <IconTable className="w-3.5 h-3.5" />
@@ -924,7 +924,7 @@ export function DataTable<T extends { [key: string]: unknown }>({
                 <IconFilter className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Filter</span>
                 {activeFilterCount > 0 && (
-                  <span className="bg-accent text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                  <span className="bg-accent text-on-accent text-[10px] rounded-full w-4 h-4 flex items-center justify-center leading-none">
                     {activeFilterCount}
                   </span>
                 )}
@@ -1001,7 +1001,7 @@ export function DataTable<T extends { [key: string]: unknown }>({
                     <button
                       type="button"
                       onClick={applyFilters}
-                      className="flex-1 py-1.5 text-xs rounded-sm bg-accent hover:bg-accent-strong text-white font-medium transition-colors"
+                      className="flex-1 py-1.5 text-xs rounded-sm bg-accent hover:bg-accent-strong text-on-accent font-medium transition-colors"
                     >
                       Apply
                     </button>
@@ -1053,7 +1053,7 @@ export function DataTable<T extends { [key: string]: unknown }>({
                       className="flex items-center gap-2 px-2 py-1.5 rounded-sm hover:bg-surface-2 transition-colors text-xs text-ink"
                     >
                       <span
-                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${!col.hidden ? "bg-accent border-accent text-white" : "border-rule-strong"}`}
+                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${!col.hidden ? "bg-accent border-accent text-on-accent" : "border-rule-strong"}`}
                       >
                         {!col.hidden && <IconCheck className="w-2.5 h-2.5" />}
                       </span>
@@ -1353,7 +1353,7 @@ export function DataTable<T extends { [key: string]: unknown }>({
                 type="button"
                 onClick={() => setPage(p)}
                 className={`min-w-7 h-7 px-2 rounded-md text-xs font-medium transition-colors ${
-                  p === page ? "bg-accent text-white" : "text-ink-muted hover:bg-surface-2"
+                  p === page ? "bg-accent text-on-accent" : "text-ink-muted hover:bg-surface-2"
                 }`}
               >
                 {p}

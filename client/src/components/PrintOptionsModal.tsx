@@ -58,7 +58,7 @@ export function PrintOptionsModal({
             type="button"
             onClick={onPrint}
             disabled={includedCount === 0}
-            className="rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-60"
+            className="rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-60"
           >
             Print {includedCount} section{includedCount === 1 ? '' : 's'}
           </button>

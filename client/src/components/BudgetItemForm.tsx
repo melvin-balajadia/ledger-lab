@@ -82,7 +82,7 @@ export function BudgetItemForm({ suggestedItemNo, onClose }: { onClose: () => vo
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="rounded-sm bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-sm bg-accent px-4 py-2 text-sm font-medium text-on-accent disabled:opacity-60"
         >
           {mutation.isPending ? 'Saving…' : 'Add budget item'}
         </button>

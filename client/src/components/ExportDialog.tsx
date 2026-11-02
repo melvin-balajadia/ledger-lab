@@ -266,7 +266,7 @@ export function ExportDialog<T>({
                 type="button"
                 onClick={run}
                 disabled={running || chosenColumns.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-strong disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-60"
               >
                 <IconDownload className="h-3.5 w-3.5" />
                 {running
@@ -319,7 +319,7 @@ function DoneState({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-strong"
+          className="rounded-sm bg-accent px-4 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong"
         >
           Done
         </button>
