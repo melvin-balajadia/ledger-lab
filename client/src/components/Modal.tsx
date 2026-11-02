@@ -51,9 +51,16 @@ export function Modal({
       }}
       // Backstop: Chrome may close a dialog on a repeated Escape without a
       // cancel event. Without this the dialog would vanish while the parent
-      // still thinks it's open, and its button couldn't reopen it. (Our own
-      // close() on unmount fires on a detached node, so it doesn't land here.)
-      onClose={onClose}
+      // still thinks it's open, and its button couldn't reopen it.
+      //
+      // The close event arrives a moment after close() is called, so check
+      // the dialog is still closed by then. In development, React StrictMode
+      // mounts every component twice: our cleanup's close() and the
+      // immediate re-open both happen before this event lands, and passing
+      // it on used to shut every modal the instant it opened.
+      onClose={(event) => {
+        if (!event.currentTarget.open) onClose();
+      }}
       className="no-print m-auto w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-lg border border-rule-strong bg-surface p-0 text-ink shadow-card backdrop:bg-black/40"
     >
       {/* The card's height is capped to the viewport and split into a fixed

@@ -413,17 +413,19 @@ function DataCard<T extends { [key: string]: unknown }>({
         )}
         <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink leading-tight truncate">
+            {/* div, not p: a column's render can return block content (a
+                progress bar, a row of pills), which a <p> may not contain. */}
+            <div className="text-sm font-semibold text-ink leading-tight truncate">
               {titleCol?.render
                 ? titleCol.render(titleVal, row)
                 : String(titleVal ?? "—")}
-            </p>
+            </div>
             {subtitleCol && (
-              <p className="mt-0.5 text-xs text-ink-muted truncate">
+              <div className="mt-0.5 text-xs text-ink-muted truncate">
                 {subtitleCol.render
                   ? subtitleCol.render(subtitleVal, row)
                   : String(subtitleVal ?? "—")}
-              </p>
+              </div>
             )}
           </div>
           {hasActions && (
@@ -453,9 +455,9 @@ function DataCard<T extends { [key: string]: unknown }>({
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint mb-0.5 leading-none">
                   {col.label}
                 </p>
-                <p className="text-xs text-ink-muted truncate">
+                <div className="text-xs text-ink-muted truncate">
                   {col.render ? col.render(raw, row) : String(raw ?? "—")}
-                </p>
+                </div>
               </div>
             );
           })}
