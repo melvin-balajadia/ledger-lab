@@ -9,6 +9,8 @@ import { StatusPill } from '../components/StatusPill';
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Supplier, SupplierListResponse } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconList } from '../components/icons';
 
 const columns: ColumnDef<Supplier>[] = [
   { key: 'name', label: 'Supplier name', sortable: true, cardTitle: true },
@@ -55,12 +57,15 @@ export function Suppliers() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold text-ink">Suppliers</h2>
-        <Button type="button" onClick={() => setModal('create')}>
-          + New supplier
-        </Button>
-      </div>
+      <PageHeader
+        icon={<IconList className="h-4.5 w-4.5" />}
+        title="Suppliers"
+        actions={
+          <Button type="button" size="sm" onClick={() => setModal('create')}>
+            + New supplier
+          </Button>
+        }
+      />
 
       <SegmentedControl
         value={activeFilter}

@@ -1,17 +1,11 @@
 import type { ButtonHTMLAttributes } from 'react';
-
-type Variant = 'outline' | 'primary';
-
-const base = 'inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-medium disabled:opacity-60';
-const variants: Record<Variant, string> = {
-  primary: `${base} bg-accent text-on-accent shadow-card hover:bg-accent-strong`,
-  outline: `${base} border border-rule-strong bg-surface text-ink-muted hover:border-danger hover:text-danger`,
-};
+import { buttonClass, type ButtonSize, type ButtonVariant } from './buttonStyles';
 
 export function Button({
   variant = 'primary',
+  size = 'md',
   className = '',
   ...props
-}: { variant?: Variant } & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button {...props} className={`${variants[variant]} ${className}`} />;
+}: { size?: ButtonSize; variant?: ButtonVariant } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button {...props} className={`${buttonClass(variant, size)} ${className}`} />;
 }

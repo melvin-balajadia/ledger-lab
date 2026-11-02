@@ -18,6 +18,8 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { AdditionalPayment, AdditionalPaymentListResponse, AdditionalPaymentSummary } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconPlusCircle } from '../components/icons';
 
 // 'customs_duty' -> 'Customs duty' -- same casing as the Type column's
 // capitalize-and-un-underscore treatment, just done once for the summary row.
@@ -143,21 +145,20 @@ export function AdditionalPayments() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold text-ink">Additional Payments</h2>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setShowDeleted(true)}
-            className="text-sm font-medium text-ink-muted hover:text-ink hover:underline"
-          >
-            Deleted items
-          </button>
-          <Button type="button" onClick={() => setModal('create')}>
-            + New entry
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<IconPlusCircle className="h-4.5 w-4.5" />}
+        title="Additional Payments"
+        actions={
+          <>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+              Deleted items
+            </Button>
+            <Button type="button" size="sm" onClick={() => setModal('create')}>
+              + New entry
+            </Button>
+          </>
+        }
+      />
 
       {summary ? (
         <SummaryStats

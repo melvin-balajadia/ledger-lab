@@ -22,6 +22,8 @@ import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { Tone } from '../lib/tones';
 import type { PurchaseOrder, PurchaseOrderListResponse, PurchaseOrderSummary, VoidedPurchaseOrder } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconReceipt } from '../components/icons';
 
 const STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
   open: 'Open',
@@ -169,21 +171,20 @@ export function PurchaseOrders() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold text-ink">Purchase Orders</h2>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setShowDeleted(true)}
-            className="text-sm font-medium text-ink-muted hover:text-ink hover:underline"
-          >
-            Deleted items
-          </button>
-          <Button type="button" onClick={() => setCreating(true)}>
-            + New PO
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<IconReceipt className="h-4.5 w-4.5" />}
+        title="Purchase Orders"
+        actions={
+          <>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+              Deleted items
+            </Button>
+            <Button type="button" size="sm" onClick={() => setCreating(true)}>
+              + New PO
+            </Button>
+          </>
+        }
+      />
 
       {summary ? (
         <SummaryStats

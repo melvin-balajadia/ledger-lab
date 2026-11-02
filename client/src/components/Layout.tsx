@@ -4,6 +4,7 @@ import { useAuthMe, useLogout } from "../hooks/useAuth";
 import { useReviewItems } from "../hooks/useReview";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
 import { SITE_NAME, SITE_TITLE } from "../site.config";
+import { AccountMenu } from "./AccountMenu";
 import { BackupButton } from "./BackupButton";
 import { Modal } from "./Modal";
 import {
@@ -56,12 +57,6 @@ function generatedAt() {
   });
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return (
-    (parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")
-  ).toUpperCase();
-}
 
 export function Layout() {
   const navigate = useNavigate();
@@ -206,25 +201,9 @@ export function Layout() {
             </div>
 
             {user && (
-              <div className="ml-auto flex shrink-0 items-center gap-3">
+              <div className="ml-auto flex shrink-0 items-center gap-1">
                 <BackupButton />
-                <span className="hidden h-6 w-px bg-rule sm:block" aria-hidden="true" />
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent"
-                    title={displayName}
-                  >
-                    {initials(displayName)}
-                  </span>
-                  <span className="hidden max-w-40 truncate text-[13px] font-medium text-ink md:block">{displayName}</span>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmLogout(true)}
-                    className="rounded-sm px-2 py-1 text-xs font-medium text-ink-muted outline-none hover:text-danger focus-visible:ring-2 focus-visible:ring-accent"
-                  >
-                    Log out
-                  </button>
-                </div>
+                <AccountMenu name={displayName} username={user.username} onLogout={() => setConfirmLogout(true)} />
               </div>
             )}
           </div>

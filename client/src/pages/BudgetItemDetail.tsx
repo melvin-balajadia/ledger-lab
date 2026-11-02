@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useBudgetItemDetail } from '../hooks/useBudgetItemDetail';
 import { useWbs } from '../hooks/useWbs';
 import { formatMoney, formatPercent } from '../lib/formatMoney';
@@ -12,6 +12,9 @@ import { Button } from '../components/Button';
 import { HeaderLineSkeleton, PanelSkeleton, Skeleton, StatGridSkeleton } from '../components/Skeleton';
 import { Modal } from '../components/Modal';
 import type { PlanningLine, WbsRow } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconFileText } from '../components/icons';
+import { StatusPill } from '../components/StatusPill';
 
 function toPlanningLine(row: WbsRow): PlanningLine {
   return {
@@ -34,10 +37,6 @@ export function BudgetItemDetail() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Link to="/" className="w-fit text-sm text-accent hover:underline">
-        ← Back to Overview
-      </Link>
-
       {isLoading && (
         <>
           <HeaderLineSkeleton />
@@ -49,16 +48,12 @@ export function BudgetItemDetail() {
 
       {item && (
         <>
-          <div>
-            <h2 className="font-display text-xl font-semibold text-ink">
-              {item.item_no} {item.description}
-            </h2>
-            {item.is_over_budget === 1 && (
-              <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wide text-danger uppercase before:h-1.5 before:w-1.5 before:rounded-full before:bg-danger before:content-['']">
-                Over budget
-              </span>
-            )}
-          </div>
+          <PageHeader
+            icon={<IconFileText className="h-4.5 w-4.5" />}
+            title={`${item.item_no} ${item.description}`}
+            badges={item.is_over_budget === 1 && <StatusPill tone="danger">Over budget</StatusPill>}
+            back={{ label: 'Overview', to: '/' }}
+          />
 
           <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Budget" value={formatMoney(item.budget)} />
