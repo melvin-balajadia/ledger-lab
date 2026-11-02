@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthMe, useLogout } from "../hooks/useAuth";
 import { useReviewItems } from "../hooks/useReview";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
-import { SITE_TITLE } from "../site.config";
+import { SITE_NAME, SITE_TITLE } from "../site.config";
 import { BackupButton } from "./BackupButton";
 import { Modal } from "./Modal";
 import {
@@ -12,6 +12,7 @@ import {
   IconBox,
   IconGrid,
   IconList,
+  IconMapPin,
   IconMenu,
   IconPlusCircle,
   IconReceipt,
@@ -31,6 +32,10 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 const iconClass = "h-4 w-4 shrink-0 opacity-75";
+
+// "Royale Cold Storage" out of "Royale Cold Storage — Plaridel Extension":
+// the top bar shows the site and the company on separate lines.
+const COMPANY = SITE_TITLE.replace(` — ${SITE_NAME}`, "");
 
 function NavGroup({ label, children }: { children: React.ReactNode; label: string }) {
   return (
@@ -93,21 +98,6 @@ export function Layout() {
 
   return (
     <div className="min-h-screen lg:flex">
-      {/* Small screens: a slim bar with the menu button. */}
-      <div className="no-print sticky top-0 z-30 flex items-center gap-3 border-b border-rule bg-surface px-4 py-3 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={menuOpen}
-          aria-controls="app-sidebar"
-          className="rounded-sm p-1.5 text-ink-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          <IconMenu className="h-5 w-5" />
-        </button>
-        <span className="font-display text-base font-semibold text-ink">LedgerLab</span>
-      </div>
-
       {menuOpen && (
         <div
           className="no-print fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -116,17 +106,19 @@ export function Layout() {
         />
       )}
 
+      {/* The product: the same at every site. */}
       <aside
         id="app-sidebar"
         className={`no-print fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col border-r border-rule bg-surface transition-transform motion-reduce:transition-none lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 ${
           menuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-start justify-between gap-2 border-b border-rule px-4 pt-5 pb-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-accent">{SITE_TITLE}</span>
-            <h1 className="font-display text-lg font-semibold text-ink">LedgerLab</h1>
-            <span className="text-xs text-ink-muted">Cost management system</span>
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-rule px-4">
+          {/* The same file as the browser-tab icon, so the mark is never redrawn. */}
+          <img src="/favicon.svg" alt="" className="h-8 w-8 shrink-0" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <h1 className="font-display text-[15px] leading-tight font-semibold text-ink">LedgerLab</h1>
+            <span className="text-xs leading-tight text-ink-muted">Cost management system</span>
           </div>
           <button
             type="button"
@@ -182,35 +174,71 @@ export function Layout() {
             </NavLink>
           </NavGroup>
         </nav>
-
-        {user && (
-          <div className="flex flex-col gap-3 border-t border-rule p-4">
-            <BackupButton />
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
-                {initials(displayName)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink" title={displayName}>
-                {displayName}
-              </span>
-              <button
-                type="button"
-                onClick={() => setConfirmLogout(true)}
-                className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-ink-muted outline-none hover:text-danger focus-visible:ring-2 focus-visible:ring-accent"
-              >
-                Log out
-              </button>
-            </div>
-          </div>
-        )}
       </aside>
 
-      <main className="min-w-0 flex-1">
-        <div className="mx-auto flex max-w-295 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
-          {/* Print only. The sidebar doesn't print, so the report carries its
-              own heading: what it is, for which site, and when and by whom it
-              was taken -- these figures move, so two printouts must be
-              distinguishable. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Where you are and who you are. The site leads: Plaridel and
+            Villasis run side by side on the same PC, and this is what tells
+            them apart before anything is entered. Same height as the
+            sidebar's brand row so the two read as one line. */}
+        <header className="no-print sticky top-0 z-30 flex h-16 shrink-0 items-center border-b border-rule bg-surface">
+          {/* Same max width as the page below, so the site lines up with the
+              page title and the user menu with the page's right edge. */}
+          <div className="flex w-full max-w-350 items-center gap-3 px-4 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              aria-controls="app-sidebar"
+              className="-ml-1.5 rounded-sm p-1.5 text-ink-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+            >
+              <IconMenu className="h-5 w-5" />
+            </button>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent sm:flex">
+                <IconMapPin className="h-4 w-4" />
+              </span>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm leading-tight font-semibold text-ink">{SITE_NAME}</span>
+                <span className="truncate text-xs leading-tight text-ink-muted">{COMPANY}</span>
+              </div>
+            </div>
+
+            {user && (
+              <div className="ml-auto flex shrink-0 items-center gap-3">
+                <BackupButton />
+                <span className="hidden h-6 w-px bg-rule sm:block" aria-hidden="true" />
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent"
+                    title={displayName}
+                  >
+                    {initials(displayName)}
+                  </span>
+                  <span className="hidden max-w-40 truncate text-[13px] font-medium text-ink md:block">{displayName}</span>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmLogout(true)}
+                    className="rounded-sm px-2 py-1 text-xs font-medium text-ink-muted outline-none hover:text-danger focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Log out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Royale spacing: a 16px gutter at minimum (24px from sm up), 20px
+            between stacked sections. Starts right after the sidebar and runs
+            up to 1400px, so a large monitor gets more table, not a gap
+            between the menu and the page. */}
+        <main className="flex w-full max-w-350 flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6">
+          {/* Print only. The sidebar and top bar don't print, so the report
+              carries its own heading: what it is, for which site, and when
+              and by whom it was taken -- these figures move, so two
+              printouts must be distinguishable. */}
           <header className="hidden flex-col gap-1 border-b border-rule pb-3 print:flex">
             <span className="text-xs font-semibold text-accent">{SITE_TITLE}</span>
             <h1 className="font-display text-2xl font-semibold text-ink">Cost Overview Report</h1>
@@ -218,8 +246,8 @@ export function Layout() {
           </header>
 
           <Outlet />
-        </div>
-      </main>
+        </main>
+      </div>
 
       {confirmLogout && (
         <Modal title="Log out?" onClose={() => setConfirmLogout(false)}>

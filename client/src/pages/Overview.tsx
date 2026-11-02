@@ -88,7 +88,7 @@ export function Overview() {
   const error = summary.error || kpis.error;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* Shaped like the real Overview below, in the same order and the same
           grids, so nothing jumps when the data lands. Only the sections that
           always render are mimicked -- VAT, JPL, retention and suppliers are

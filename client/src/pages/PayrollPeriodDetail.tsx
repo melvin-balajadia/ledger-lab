@@ -128,7 +128,7 @@ export function PayrollPeriodDetail() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <Link to="/payroll" className="w-fit text-sm text-accent hover:underline">
         ← Back to Payroll
       </Link>

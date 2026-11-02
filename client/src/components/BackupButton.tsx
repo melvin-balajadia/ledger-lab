@@ -23,18 +23,25 @@ export function BackupButton() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {savedLabel && <span className="text-xs font-medium text-success">{savedLabel}</span>}
-      {backup.error && <span className="text-xs font-medium text-danger">{backup.error.message}</span>}
+    // Lives in the fixed-height top bar: one line, a long error shortened
+    // (full text on hover), and icon-only below the sm breakpoint.
+    <div className="flex min-w-0 items-center gap-2">
+      {savedLabel && <span className="text-xs font-medium whitespace-nowrap text-success">{savedLabel}</span>}
+      {backup.error && (
+        <span className="max-w-60 truncate text-xs font-medium text-danger" title={backup.error.message}>
+          {backup.error.message}
+        </span>
+      )}
       <button
         type="button"
         onClick={handleClick}
         disabled={backup.isPending}
         title="Back up the database now"
-        className="inline-flex items-center gap-1.5 rounded-sm border border-rule-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-canvas disabled:opacity-60"
+        aria-label={backup.isPending ? 'Backing up…' : 'Backup now'}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-rule-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-canvas disabled:opacity-60"
       >
         <IconDownload className="h-3.75 w-3.75" />
-        {backup.isPending ? 'Backing up…' : 'Backup now'}
+        <span className="hidden sm:inline">{backup.isPending ? 'Backing up…' : 'Backup now'}</span>
       </button>
     </div>
   );

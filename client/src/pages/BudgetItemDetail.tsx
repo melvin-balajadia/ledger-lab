@@ -33,7 +33,7 @@ export function BudgetItemDetail() {
   const [lineModal, setLineModal] = useState<'create' | PlanningLine | null>(null);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <Link to="/" className="w-fit text-sm text-accent hover:underline">
         ← Back to Overview
       </Link>

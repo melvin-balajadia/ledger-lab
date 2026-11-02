@@ -44,7 +44,7 @@ export function WorkerPayrollDetail() {
   const totalEarned = data ? sumMoney(data.entries.map((e) => e.amount)) : '0.00';
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <Link to="/payroll" className="w-fit text-sm text-accent hover:underline">
         ← Back to Payroll
       </Link>
