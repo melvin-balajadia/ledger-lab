@@ -164,6 +164,14 @@ export function IconMapPin({ className }: IconProps) {
   );
 }
 
+export function IconPlus({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
 export function IconMenu({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

@@ -19,7 +19,7 @@ import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { Replenishment, ReplenishmentListResponse, ReplenishmentSummary } from '../types';
 import { PageHeader } from '../components/PageHeader';
-import { IconBox } from '../components/icons';
+import { IconBox, IconPlus, IconTrash } from '../components/icons';
 
 const columns: ColumnDef<Replenishment>[] = [
   { key: 'txn_date', label: 'Date', sortable: true },
@@ -140,11 +140,11 @@ export function Replenishments() {
         title="Replenishments"
         actions={
           <>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
               Deleted items
             </Button>
-            <Button type="button" size="sm" onClick={() => setModal('create')}>
-              + New entry
+            <Button type="button" size="sm" onClick={() => setModal('create')} icon={<IconPlus />}>
+              New entry
             </Button>
           </>
         }

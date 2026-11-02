@@ -116,6 +116,12 @@ body {
   font-family: var(--font-sans);
 }
 
+/* While a Modal (a native <dialog>) is open, the page behind doesn't
+   scroll under it; nested dialogs need no bookkeeping. */
+html:has(dialog[open]) {
+  overflow: hidden;
+}
+
 /* Peso amounts: Inter with tabular figures, so columns of digits line up
    the way the old monospaced face did. */
 .font-mono {

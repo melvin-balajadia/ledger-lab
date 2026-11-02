@@ -29,7 +29,7 @@ import { Modal } from "../components/Modal";
 import { DeletedItemsModal } from "../components/DeletedItemsModal";
 import type { Tone } from "../lib/tones";
 import { PageHeader } from "../components/PageHeader";
-import { IconBanknote } from "../components/icons";
+import { IconBanknote, IconPlus, IconTrash } from "../components/icons";
 import type {
   CashAdvance,
   CashAdvanceListResponse,
@@ -201,11 +201,11 @@ export function CashAdvances() {
         title="Cash Advances"
         actions={
           <>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
               Deleted items
             </Button>
-            <Button type="button" size="sm" onClick={() => setModal("create")}>
-              + New entry
+            <Button type="button" size="sm" onClick={() => setModal("create")} icon={<IconPlus />}>
+              New entry
             </Button>
           </>
         }

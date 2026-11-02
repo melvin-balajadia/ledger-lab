@@ -10,7 +10,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Supplier, SupplierListResponse } from '../types';
 import { PageHeader } from '../components/PageHeader';
-import { IconList } from '../components/icons';
+import { IconList, IconPlus } from '../components/icons';
 
 const columns: ColumnDef<Supplier>[] = [
   { key: 'name', label: 'Supplier name', sortable: true, cardTitle: true },
@@ -61,8 +61,8 @@ export function Suppliers() {
         icon={<IconList className="h-4.5 w-4.5" />}
         title="Suppliers"
         actions={
-          <Button type="button" size="sm" onClick={() => setModal('create')}>
-            + New supplier
+          <Button type="button" size="sm" onClick={() => setModal('create')} icon={<IconPlus />}>
+            New supplier
           </Button>
         }
       />

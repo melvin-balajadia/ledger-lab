@@ -21,7 +21,7 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Tone } from '../lib/tones';
 import { PageHeader } from '../components/PageHeader';
-import { IconUsers } from '../components/icons';
+import { IconPlus, IconUsers } from '../components/icons';
 import type {
   PayrollPeriod,
   PayrollPeriodListResponse,
@@ -221,13 +221,13 @@ export function Payroll() {
         actions={
           <>
           {viewMode === 'periods' && (
-            <Button type="button" size="sm" onClick={() => setShowNewPeriod(true)}>
-              + New period
+            <Button type="button" size="sm" onClick={() => setShowNewPeriod(true)} icon={<IconPlus />}>
+              New period
             </Button>
           )}
           {viewMode === 'workers' && (
-            <Button type="button" size="sm" onClick={() => setWorkerModal('create')}>
-              + New worker
+            <Button type="button" size="sm" onClick={() => setWorkerModal('create')} icon={<IconPlus />}>
+              New worker
             </Button>
           )}
           <div className="flex gap-1 rounded-sm border border-rule-strong p-0.5">

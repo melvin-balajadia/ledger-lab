@@ -23,7 +23,7 @@ import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { Tone } from '../lib/tones';
 import type { PurchaseOrder, PurchaseOrderListResponse, PurchaseOrderSummary, VoidedPurchaseOrder } from '../types';
 import { PageHeader } from '../components/PageHeader';
-import { IconReceipt } from '../components/icons';
+import { IconPlus, IconReceipt, IconTrash } from '../components/icons';
 
 const STATUS_LABEL: Record<PurchaseOrder['status'], string> = {
   open: 'Open',
@@ -176,11 +176,11 @@ export function PurchaseOrders() {
         title="Purchase Orders"
         actions={
           <>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
               Deleted items
             </Button>
-            <Button type="button" size="sm" onClick={() => setCreating(true)}>
-              + New PO
+            <Button type="button" size="sm" onClick={() => setCreating(true)} icon={<IconPlus />}>
+              New PO
             </Button>
           </>
         }

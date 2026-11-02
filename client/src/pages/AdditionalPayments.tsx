@@ -19,7 +19,7 @@ import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { AdditionalPayment, AdditionalPaymentListResponse, AdditionalPaymentSummary } from '../types';
 import { PageHeader } from '../components/PageHeader';
-import { IconPlusCircle } from '../components/icons';
+import { IconPlus, IconPlusCircle, IconTrash } from '../components/icons';
 
 // 'customs_duty' -> 'Customs duty' -- same casing as the Type column's
 // capitalize-and-un-underscore treatment, just done once for the summary row.
@@ -150,11 +150,11 @@ export function AdditionalPayments() {
         title="Additional Payments"
         actions={
           <>
-            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
               Deleted items
             </Button>
-            <Button type="button" size="sm" onClick={() => setModal('create')}>
-              + New entry
+            <Button type="button" size="sm" onClick={() => setModal('create')} icon={<IconPlus />}>
+              New entry
             </Button>
           </>
         }

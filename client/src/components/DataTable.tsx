@@ -255,7 +255,10 @@ function PortalDropdown({
     >
       {children}
     </div>,
-    document.body,
+    // Inside a modal, render into its <dialog>: the page behind an open
+    // dialog is inert and painted under the browser's top layer, so a
+    // dropdown portalled to <body> would be hidden and unclickable there.
+    anchorRef.current?.closest("dialog") ?? document.body,
   );
 }
 

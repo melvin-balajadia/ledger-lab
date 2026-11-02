@@ -125,8 +125,7 @@ export function Overview() {
             icon={<IconGrid className="h-4.5 w-4.5" />}
             title="Overview"
             actions={
-              <Button type="button" variant="secondary" size="sm" onClick={() => setShowPrintOptions(true)}>
-                <IconPrinter className="h-3.75 w-3.75" />
+              <Button type="button" variant="secondary" size="sm" onClick={() => setShowPrintOptions(true)} icon={<IconPrinter />}>
                 Print / Save as PDF
               </Button>
             }

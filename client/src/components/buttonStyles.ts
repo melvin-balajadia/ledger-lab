@@ -6,7 +6,9 @@
 export type ButtonVariant = 'primary' | 'secondary' | 'outline';
 export type ButtonSize = 'sm' | 'md';
 
-const base = 'inline-flex items-center gap-2 rounded-sm font-medium disabled:opacity-60';
+// [&_svg]: an icon inside a button is 14px (Royale), whoever passes it.
+const base =
+  'inline-flex items-center gap-2 rounded-sm font-medium disabled:opacity-60 [&_svg]:size-3.5 [&_svg]:shrink-0';
 const sizes: Record<ButtonSize, string> = {
   md: 'px-4 py-2 text-sm',
   sm: 'px-3 py-1.5 text-sm',

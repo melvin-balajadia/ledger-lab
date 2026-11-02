@@ -13,7 +13,7 @@ import { HeaderLineSkeleton, PanelSkeleton, Skeleton, StatGridSkeleton } from '.
 import { Modal } from '../components/Modal';
 import type { PlanningLine, WbsRow } from '../types';
 import { PageHeader } from '../components/PageHeader';
-import { IconFileText } from '../components/icons';
+import { IconFileText, IconPlus } from '../components/icons';
 import { StatusPill } from '../components/StatusPill';
 
 function toPlanningLine(row: WbsRow): PlanningLine {
@@ -93,8 +93,8 @@ export function BudgetItemDetail() {
           <section className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h3 className="font-display text-lg font-semibold text-ink">WBS / JPL breakdown</h3>
-              <Button type="button" onClick={() => setLineModal('create')}>
-                + New line
+              <Button type="button" onClick={() => setLineModal('create')} icon={<IconPlus />}>
+                New line
               </Button>
             </div>
             {wbsLoading && (

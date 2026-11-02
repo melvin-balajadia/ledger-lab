@@ -28,7 +28,7 @@ import { PayrollBudgetBreakdown } from '../components/PayrollBudgetBreakdown';
 import type { PayrollEntry, PayrollWorkflowStatus } from '../types';
 import type { Tone } from '../lib/tones';
 import { PageHeader } from '../components/PageHeader';
-import { IconCalendar } from '../components/icons';
+import { IconCalendar, IconPenLine, IconPlus, IconTrash } from '../components/icons';
 
 const WORKFLOW_LABEL: Record<PayrollWorkflowStatus, string> = {
   draft: 'Draft',
@@ -153,10 +153,10 @@ export function PayrollPeriodDetail() {
             back={{ label: 'Payroll', to: '/payroll' }}
             actions={
               <>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
                   Deleted entries
                 </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowEditPeriod(true)}>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowEditPeriod(true)} icon={<IconPenLine />}>
                   Edit period
                 </Button>
               </>
@@ -193,8 +193,8 @@ export function PayrollPeriodDetail() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" className="self-start" onClick={() => setEntryModal('create')}>
-              + Add entry
+            <Button type="button" className="self-start" onClick={() => setEntryModal('create')} icon={<IconPlus />}>
+              Add entry
             </Button>
             {selectedEntries.length > 0 && (
               <button
