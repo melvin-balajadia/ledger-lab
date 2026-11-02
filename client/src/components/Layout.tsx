@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthMe, useLogout } from "../hooks/useAuth";
 import { useReviewItems } from "../hooks/useReview";
@@ -7,21 +7,39 @@ import { SITE_TITLE } from "../site.config";
 import { BackupButton } from "./BackupButton";
 import { Modal } from "./Modal";
 import {
-  IconAlertCircle,
+  IconAlertTriangle,
+  IconBanknote,
   IconBox,
   IconGrid,
   IconList,
+  IconMenu,
+  IconPlusCircle,
   IconReceipt,
-  IconTrendDown,
   IconUsers,
+  IconX,
 } from "./icons";
 
+// A left sidebar rather than a top row: eight pages (nine with the weekly
+// budget) no longer fit across, and grouping them says what each one is for.
+// The active page gets an accent bar on its left edge, the only colour in the
+// menu -- everything else stays quiet so the figures are what you look at.
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `relative flex shrink-0 items-center gap-2 px-1 pb-3 text-sm font-medium whitespace-nowrap ${
+  `relative flex items-center gap-2.5 rounded-sm px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent ${
     isActive
-      ? "text-ink font-semibold after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-accent after:content-['']"
-      : "text-ink-muted hover:text-ink"
+      ? "bg-accent-soft font-semibold text-ink before:absolute before:inset-y-1.5 before:left-0 before:w-0.75 before:rounded-full before:bg-accent before:content-['']"
+      : "font-medium text-ink-muted hover:bg-surface-2 hover:text-ink"
   }`;
+
+const iconClass = "h-4 w-4 shrink-0 opacity-75";
+
+function NavGroup({ label, children }: { children: React.ReactNode; label: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="px-3 pt-4 pb-1 text-xs font-medium text-ink-faint">{label}</p>
+      {children}
+    </div>
+  );
+}
 
 function generatedAt() {
   return new Date().toLocaleString("en-PH", {
@@ -46,6 +64,15 @@ export function Layout() {
   const logout = useLogout();
 
   const [confirmLogout, setConfirmLogout] = useState(false);
+  // Below the lg breakpoint the sidebar is a drawer behind a menu button.
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   async function handleLogout() {
     // Only clear local state and leave once the server has actually ended the
@@ -65,94 +92,134 @@ export function Layout() {
   const reviewCount = useReviewItems().data?.length ?? 0;
 
   return (
-    <div className="mx-auto flex max-w-295 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
-      <header className="flex flex-col gap-5 border-b border-rule pb-0">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-accent uppercase">
-              {SITE_TITLE}
-            </span>
-            <h1 className="font-display text-2xl font-semibold text-balance text-ink sm:text-3xl print:hidden">
-              LedgerLab - Cost Management System
-            </h1>
-            {/* Print only. The app's own product name isn't meaningful to
-                whoever this report goes to -- they're reading about the
-                project, not the software used to produce it. */}
-            <h1 className="hidden font-display text-2xl font-semibold text-balance text-ink sm:text-3xl print:block">
-              Cost Overview Report
-            </h1>
-            {/* Print only. These figures move, so a printout going up the
-                approval chain has to say when it was taken and by whom --
-                otherwise two copies are indistinguishable. */}
-            {user && (
-              <p className="hidden text-xs text-ink-muted print:block">
-                Generated {generatedAt()} by {displayName}
-              </p>
-            )}
+    <div className="min-h-screen lg:flex">
+      {/* Small screens: a slim bar with the menu button. */}
+      <div className="no-print sticky top-0 z-30 flex items-center gap-3 border-b border-rule bg-surface px-4 py-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={menuOpen}
+          aria-controls="app-sidebar"
+          className="rounded-sm p-1.5 text-ink-muted outline-none hover:bg-surface-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <IconMenu className="h-5 w-5" />
+        </button>
+        <span className="font-display text-base font-semibold text-ink">LedgerLab</span>
+      </div>
+
+      {menuOpen && (
+        <div
+          className="no-print fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        id="app-sidebar"
+        className={`no-print fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col border-r border-rule bg-surface transition-transform motion-reduce:transition-none lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2 border-b border-rule px-4 pt-5 pb-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold text-accent">{SITE_TITLE}</span>
+            <h1 className="font-display text-lg font-semibold text-ink">LedgerLab</h1>
+            <span className="text-xs text-ink-muted">Cost management system</span>
           </div>
-          {user && (
-            <div className="no-print flex items-center gap-3">
-              <BackupButton />
-              <div className="flex items-center gap-2.5 rounded-full border border-rule py-1 pr-3 pl-1 bg-surface">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
-                  {initials(displayName)}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close menu"
+            className="rounded-sm p-1 text-ink-muted outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Any click on a link closes the drawer on small screens. */}
+        <nav className="flex flex-1 flex-col overflow-y-auto px-3 py-3" onClick={() => setMenuOpen(false)}>
+          <NavLink to="/" end className={navLinkClass}>
+            <IconGrid className={iconClass} />
+            Overview
+          </NavLink>
+          <NavGroup label="Ledgers">
+            <NavLink to="/replenishments" className={navLinkClass}>
+              <IconBox className={iconClass} />
+              Replenishments
+            </NavLink>
+            <NavLink to="/purchase-orders" className={navLinkClass}>
+              <IconReceipt className={iconClass} />
+              Purchase Orders
+            </NavLink>
+            <NavLink to="/cash-advances" className={navLinkClass}>
+              <IconBanknote className={iconClass} />
+              Cash Advances
+            </NavLink>
+            <NavLink to="/additional-payments" className={navLinkClass}>
+              <IconPlusCircle className={iconClass} />
+              Additional Payments
+            </NavLink>
+            <NavLink to="/payroll" className={navLinkClass}>
+              <IconUsers className={iconClass} />
+              Payroll
+            </NavLink>
+          </NavGroup>
+          <NavGroup label="Maintenance">
+            <NavLink to="/suppliers" className={navLinkClass}>
+              <IconList className={iconClass} />
+              Suppliers
+            </NavLink>
+            <NavLink to="/review" className={navLinkClass}>
+              <IconAlertTriangle className={iconClass} />
+              Needs review
+              {reviewCount > 0 && (
+                <span className="ml-auto rounded-full bg-warn-soft px-1.5 py-0.5 text-[11px] font-semibold text-warn tabular-nums">
+                  {reviewCount}
                 </span>
-                <span className="text-[13px] font-medium text-ink">
-                  {displayName}
-                </span>
-              </div>
+              )}
+            </NavLink>
+          </NavGroup>
+        </nav>
+
+        {user && (
+          <div className="flex flex-col gap-3 border-t border-rule p-4">
+            <BackupButton />
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
+                {initials(displayName)}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-ink" title={displayName}>
+                {displayName}
+              </span>
               <button
                 type="button"
                 onClick={() => setConfirmLogout(true)}
-                className="rounded-sm border border-rule-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:border-danger hover:text-danger"
+                className="shrink-0 rounded-sm px-2 py-1 text-xs font-medium text-ink-muted outline-none hover:text-danger focus-visible:ring-2 focus-visible:ring-accent"
               >
                 Log out
               </button>
             </div>
-          )}
-        </div>
-        <nav className="flex gap-7 overflow-x-auto">
-          <NavLink to="/" end className={navLinkClass}>
-            <IconGrid className="h-3.75 w-3.75 opacity-75" />
-            Overview
-          </NavLink>
-          <NavLink to="/replenishments" className={navLinkClass}>
-            <IconBox className="h-3.75 w-3.75 opacity-75" />
-            Replenishments
-          </NavLink>
-          <NavLink to="/purchase-orders" className={navLinkClass}>
-            <IconReceipt className="h-3.75 w-3.75 opacity-75" />
-            Purchase Orders
-          </NavLink>
-          <NavLink to="/cash-advances" className={navLinkClass}>
-            <IconTrendDown className="h-3.75 w-3.75 opacity-75" />
-            Cash Advances
-          </NavLink>
-          <NavLink to="/additional-payments" className={navLinkClass}>
-            <IconAlertCircle className="h-3.75 w-3.75 opacity-75" />
-            Additional Payments
-          </NavLink>
-          <NavLink to="/payroll" className={navLinkClass}>
-            <IconUsers className="h-3.75 w-3.75 opacity-75" />
-            Payroll
-          </NavLink>
-          <NavLink to="/suppliers" className={navLinkClass}>
-            <IconList className="h-3.75 w-3.75 opacity-75" />
-            Suppliers
-          </NavLink>
-          <NavLink to="/review" className={navLinkClass}>
-            <IconAlertCircle className="h-3.75 w-3.75 opacity-75" />
-            Needs review
-            {reviewCount > 0 && (
-              <span className="rounded-full bg-warn-soft px-1.5 py-0.5 text-[11px] font-semibold text-warn tabular-nums">
-                {reviewCount}
-              </span>
-            )}
-          </NavLink>
-        </nav>
-      </header>
+          </div>
+        )}
+      </aside>
 
-      <Outlet />
+      <main className="min-w-0 flex-1">
+        <div className="mx-auto flex max-w-295 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
+          {/* Print only. The sidebar doesn't print, so the report carries its
+              own heading: what it is, for which site, and when and by whom it
+              was taken -- these figures move, so two printouts must be
+              distinguishable. */}
+          <header className="hidden flex-col gap-1 border-b border-rule pb-3 print:flex">
+            <span className="text-xs font-semibold text-accent">{SITE_TITLE}</span>
+            <h1 className="font-display text-2xl font-semibold text-ink">Cost Overview Report</h1>
+            {user && <p className="text-xs text-ink-muted">Generated {generatedAt()} by {displayName}</p>}
+          </header>
+
+          <Outlet />
+        </div>
+      </main>
 
       {confirmLogout && (
         <Modal title="Log out?" onClose={() => setConfirmLogout(false)}>

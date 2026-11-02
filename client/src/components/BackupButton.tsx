@@ -23,7 +23,7 @@ export function BackupButton() {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {savedLabel && <span className="text-xs font-medium text-success">{savedLabel}</span>}
       {backup.error && <span className="text-xs font-medium text-danger">{backup.error.message}</span>}
       <button
