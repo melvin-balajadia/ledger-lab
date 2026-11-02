@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Decimal from 'decimal.js';
-import { useCreatePurchaseOrder, useUpdatePurchaseOrder } from '../hooks/usePurchaseOrders';
+import { useCreatePurchaseOrder, usePurchaseOrdersByNumber, useUpdatePurchaseOrder } from '../hooks/usePurchaseOrders';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useFxRates, suggestFxRate } from '../hooks/useFxRates';
 import { formatMoney } from '../lib/formatMoney';
 import { SupplierAutocomplete } from './SupplierAutocomplete';
@@ -30,6 +31,9 @@ export function PurchaseOrderForm({ po, onClose }: { onClose: () => void; po?: P
   const mutation = isEdit ? updateMutation : createMutation;
 
   const [porNo, setPorNo] = useState(po?.por_no ?? '');
+  // Warns while typing; the server's unique key still refuses the save.
+  const { data: samePorNo = [] } = usePurchaseOrdersByNumber(useDebouncedValue(porNo, 300));
+  const duplicatePo = samePorNo.find((row) => row.id !== po?.id);
   const [msrNo, setMsrNo] = useState(po?.msr_no ?? '');
   const [poDate, setPoDate] = useState(po?.po_date ?? '');
   const [supplier, setSupplier] = useState<Supplier | null>(
@@ -123,8 +127,15 @@ export function PurchaseOrderForm({ po, onClose }: { onClose: () => void; po?: P
             required
             value={porNo}
             onChange={(e) => setPorNo(e.target.value)}
+            aria-invalid={Boolean(duplicatePo)}
             className="w-full rounded-sm border border-rule-strong bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent"
           />
+          {duplicatePo && (
+            <p role="alert" className="mt-1 text-xs text-danger">
+              {duplicatePo.por_no} already exists ({duplicatePo.supplier}, {duplicatePo.po_date ?? 'no date'}). Saving will
+              be refused.
+            </p>
+          )}
         </Field>
         <Field label="MSR number">
           <input

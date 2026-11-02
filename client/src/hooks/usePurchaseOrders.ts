@@ -7,6 +7,7 @@ import type {
   PoPaymentType,
   PurchaseOrder,
   PurchaseOrderDetail,
+  PurchaseOrderListResponse,
   VoidedPurchaseOrder,
 } from '../types';
 import { PROJECT_ID } from './useProjectData';
@@ -16,6 +17,20 @@ export function usePurchaseOrderDetail(poId: number | null) {
     queryKey: ['purchase-order', PROJECT_ID, poId],
     queryFn: () => fetchJson<PurchaseOrderDetail>(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}`),
     enabled: poId != null,
+  });
+}
+
+// Live duplicate check for the PO form. Voided POs aren't listed, matching
+// uk_por, which lets a voided PO's number be reused.
+export function usePurchaseOrdersByNumber(porNo: string) {
+  const q = porNo.trim();
+  return useQuery({
+    queryKey: ['purchase-orders', PROJECT_ID, 'by-number', q.toLowerCase()],
+    queryFn: async () =>
+      (await fetchJson<PurchaseOrderListResponse>(
+        `/api/projects/${PROJECT_ID}/purchase-orders?por_no=${encodeURIComponent(q)}`,
+      )).rows,
+    enabled: q.length > 0,
   });
 }
 

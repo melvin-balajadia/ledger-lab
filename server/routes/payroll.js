@@ -4,6 +4,19 @@ const { recordAudit } = require('../lib/audit');
 
 const router = express.Router();
 
+const PROJECT_DATE_MIN = '2025-01-01';
+const PROJECT_DATE_MAX = '2027-12-31';
+
+// Same project window every other write enforces -- the form's min/max alone
+// is bypassed by typing a date or calling the API directly.
+function periodDateError(start, end) {
+  if (start < PROJECT_DATE_MIN || end > PROJECT_DATE_MAX) {
+    return `period dates must be between ${PROJECT_DATE_MIN} and ${PROJECT_DATE_MAX}`;
+  }
+  if (start > end) return 'period_start must be on or before period_end';
+  return null;
+}
+
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -257,9 +270,8 @@ router.post('/:id/payroll-periods', async (req, res, next) => {
   if (!label || !periodStart || !periodEnd) {
     return res.status(400).json({ error: 'label, period_start and period_end are required' });
   }
-  if (periodStart > periodEnd) {
-    return res.status(400).json({ error: 'period_start must be on or before period_end' });
-  }
+  const dateError = periodDateError(periodStart, periodEnd);
+  if (dateError) return res.status(400).json({ error: dateError });
 
   const appUser = req.session.username;
   const conn = await pool.getConnection();
@@ -317,6 +329,14 @@ router.patch('/:id/payroll-periods/:periodId', async (req, res, next) => {
     if (!label || !periodStart || !periodEnd) {
       await conn.rollback();
       return res.status(400).json({ error: 'label, period_start and period_end are required' });
+    }
+    // Only when the dates are being changed -- a status/total edit on an
+    // existing period shouldn't be refused over dates nobody touched.
+    const dateError = (req.body.period_start !== undefined || req.body.period_end !== undefined)
+      && periodDateError(periodStart, periodEnd);
+    if (dateError) {
+      await conn.rollback();
+      return res.status(400).json({ error: dateError });
     }
 
     await conn.query(

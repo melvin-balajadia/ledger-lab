@@ -173,6 +173,12 @@ router.get('/:id/purchase-orders', async (req, res, next) => {
     const where = ['v.project_id = ?'];
     const params = [req.params.id];
 
+    // Exact match (case-insensitive collation) for the form's live duplicate
+    // check -- q is a LIKE and could page the real duplicate out.
+    if (req.query.por_no) {
+      where.push('v.por_no = ?');
+      params.push(String(req.query.por_no).trim());
+    }
     if (req.query.supplier_id) {
       where.push('po.supplier_id = ?');
       params.push(req.query.supplier_id);
@@ -360,9 +366,12 @@ router.get('/:id/purchase-orders/:poId', async (req, res, next) => {
 router.post('/:id/purchase-orders', async (req, res, next) => {
   const projectId = req.params.id;
   const {
-    por_no, msr_no, po_date, supplier_id, planning_line_id,
+    msr_no, po_date, supplier_id, planning_line_id,
     item_description, ref_no, currency, contract_amount, fx_rate, remarks, milestones,
   } = req.body;
+  // Trimmed: the column's collation is NO PAD, so "POR17533 " would slip past
+  // uk_por as a second PO and never match an exact lookup.
+  const por_no = String(req.body.por_no ?? '').trim();
 
   const errors = [];
   if (!por_no) errors.push('por_no is required');
@@ -474,6 +483,7 @@ router.patch('/:id/purchase-orders/:poId', async (req, res, next) => {
     ]) {
       if (req.body[field] !== undefined) merged[field] = req.body[field];
     }
+    merged.por_no = String(merged.por_no ?? '').trim(); // see POST
     // milestones are only touched when the client actually sends them --
     // editing "Description" alone shouldn't require resending the whole
     // payment schedule.
