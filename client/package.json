@@ -11,6 +11,7 @@
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\""
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.5",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.4",
     "decimal.js": "^10.6.0",

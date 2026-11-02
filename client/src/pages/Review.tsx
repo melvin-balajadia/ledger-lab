@@ -14,6 +14,8 @@ import { CashAdvanceForm } from '../components/CashAdvanceForm';
 import { AdditionalPaymentForm } from '../components/AdditionalPaymentForm';
 import { PurchaseOrderDetail } from '../components/PurchaseOrderDetail';
 import type { AdditionalPayment, CashAdvance, Replenishment, ReviewItem, ReviewSource } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconAlertTriangle } from '../components/icons';
 
 const SOURCE_LABEL: Record<ReviewSource, string> = {
   replenishment: 'Replenishment',
@@ -146,12 +148,10 @@ export function Review() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-semibold text-ink">Needs review</h2>
-        <p className="text-sm text-ink-muted">
-          Every row the Overview alerts count. Open one to fix it; it leaves this list once nothing is wrong with it.
-        </p>
-      </div>
+      <PageHeader icon={<IconAlertTriangle className="h-4.5 w-4.5" />} title="Needs review" />
+      <p className="text-sm text-ink-muted">
+        Every row the Overview alerts count. Open one to fix it; it leaves this list once nothing is wrong with it.
+      </p>
 
       {error && <p className="text-sm text-danger">Couldn’t load the review list: {error.message}</p>}
       {markReviewed.error && (

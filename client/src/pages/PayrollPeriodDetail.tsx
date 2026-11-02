@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   useDeletePayrollEntries,
   useDeletePayrollEntry,
@@ -27,6 +27,8 @@ import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import { PayrollBudgetBreakdown } from '../components/PayrollBudgetBreakdown';
 import type { PayrollEntry, PayrollWorkflowStatus } from '../types';
 import type { Tone } from '../lib/tones';
+import { PageHeader } from '../components/PageHeader';
+import { IconCalendar, IconPenLine, IconPlus, IconTrash } from '../components/icons';
 
 const WORKFLOW_LABEL: Record<PayrollWorkflowStatus, string> = {
   draft: 'Draft',
@@ -128,11 +130,7 @@ export function PayrollPeriodDetail() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link to="/payroll" className="w-fit text-sm text-accent hover:underline">
-        ← Back to Payroll
-      </Link>
-
+    <div className="flex flex-col gap-5">
       {isLoading && (
         <>
           <HeaderLineSkeleton />
@@ -143,29 +141,27 @@ export function PayrollPeriodDetail() {
 
       {period && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="font-display text-xl font-semibold text-ink">{period.label}</h2>
-              <StatusPill tone={WORKFLOW_TONE[period.status]}>{WORKFLOW_LABEL[period.status]}</StatusPill>
-              <ReconciliationBadge status={period.reconciliation_status} />
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setShowDeleted(true)}
-                className="text-sm font-medium text-ink-muted hover:text-ink hover:underline"
-              >
-                Deleted entries
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowEditPeriod(true)}
-                className="rounded-sm border border-rule-strong px-3 py-1.5 text-sm text-ink-muted hover:bg-canvas"
-              >
-                Edit period
-              </button>
-            </div>
-          </div>
+          <PageHeader
+            icon={<IconCalendar className="h-4.5 w-4.5" />}
+            title={period.label}
+            badges={
+              <>
+                <StatusPill tone={WORKFLOW_TONE[period.status]}>{WORKFLOW_LABEL[period.status]}</StatusPill>
+                <ReconciliationBadge status={period.reconciliation_status} />
+              </>
+            }
+            back={{ label: 'Payroll', to: '/payroll' }}
+            actions={
+              <>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
+                  Deleted entries
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowEditPeriod(true)} icon={<IconPenLine />}>
+                  Edit period
+                </Button>
+              </>
+            }
+          />
 
           <SegmentedControl
             value={period.status}
@@ -197,8 +193,8 @@ export function PayrollPeriodDetail() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" className="self-start" onClick={() => setEntryModal('create')}>
-              + Add entry
+            <Button type="button" className="self-start" onClick={() => setEntryModal('create')} icon={<IconPlus />}>
+              Add entry
             </Button>
             {selectedEntries.length > 0 && (
               <button

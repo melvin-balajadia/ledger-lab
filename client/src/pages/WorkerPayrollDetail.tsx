@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useWorkerPayrollEntries } from '../hooks/useWorkers';
 import { clientPaginate } from '../lib/clientPaginate';
 import { formatMoney, sumMoney } from '../lib/formatMoney';
@@ -7,6 +7,8 @@ import { DataTable, type ColumnDef, type FetchParams } from '../components/DataT
 import { StatusPill } from '../components/StatusPill';
 import { HeaderLineSkeleton, StatGridSkeleton } from '../components/Skeleton';
 import type { WorkerPayrollEntry } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconUser } from '../components/icons';
 
 const columns: ColumnDef<WorkerPayrollEntry>[] = [
   { key: 'period_start', label: 'Week', sortable: true, cardTitle: true, render: (_value, row) => row.period_label as string },
@@ -44,11 +46,7 @@ export function WorkerPayrollDetail() {
   const totalEarned = data ? sumMoney(data.entries.map((e) => e.amount)) : '0.00';
 
   return (
-    <div className="flex flex-col gap-6">
-      <Link to="/payroll" className="w-fit text-sm text-accent hover:underline">
-        ← Back to Payroll
-      </Link>
-
+    <div className="flex flex-col gap-5">
       {isLoading && (
         <>
           <HeaderLineSkeleton />
@@ -59,18 +57,19 @@ export function WorkerPayrollDetail() {
 
       {data && (
         <>
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="font-display text-xl font-semibold text-ink">{data.worker.full_name}</h2>
-            {data.worker.is_active ? (
-              <StatusPill tone="success">Active</StatusPill>
-            ) : (
-              <StatusPill tone="info">Separated</StatusPill>
-            )}
-          </div>
-          <p className="text-sm text-ink-muted">
-            {data.worker.position ?? '—'}
-            {data.worker.employee_no ? ` · Employee No. ${data.worker.employee_no}` : ''}
-          </p>
+          <PageHeader
+            icon={<IconUser className="h-4.5 w-4.5" />}
+            title={data.worker.full_name}
+            badges={
+              data.worker.is_active ? (
+                <StatusPill tone="success">Active</StatusPill>
+              ) : (
+                <StatusPill tone="info">Separated</StatusPill>
+              )
+            }
+            subtitle={`${data.worker.position ?? '—'}${data.worker.employee_no ? ` · Employee No. ${data.worker.employee_no}` : ''}`}
+            back={{ label: 'Payroll', to: '/payroll' }}
+          />
 
           <div className="grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-2">
             <Stat label="Total Earned" value={formatMoney(totalEarned)} />

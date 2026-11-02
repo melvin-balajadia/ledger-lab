@@ -136,6 +136,50 @@ export function IconInfo({ className }: IconProps) {
   );
 }
 
+export function IconBanknote({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M6 12h.01M18 12h.01" />
+    </svg>
+  );
+}
+
+export function IconPlusCircle({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v8M8 12h8" />
+    </svg>
+  );
+}
+
+export function IconMapPin({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+export function IconPlus({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function IconMenu({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
 export function IconX({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

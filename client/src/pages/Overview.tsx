@@ -19,9 +19,11 @@ import { PrintOptionsModal } from '../components/PrintOptionsModal';
 import { KpiCardsSkeleton, PanelSkeleton } from '../components/Skeleton';
 import { BudgetItemForm } from '../components/BudgetItemForm';
 import { Modal } from '../components/Modal';
-import { IconPrinter } from '../components/icons';
+import { IconGrid, IconPrinter } from '../components/icons';
 import { loadExcluded, saveExcluded, type PrintSectionKey } from '../lib/printSections';
 import type { BudgetSummaryRow } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { Button } from '../components/Button';
 
 const TREND_WINDOW_OPTIONS: { label: string; value: '6' | '12' | '24' }[] = [
   { label: '6M', value: '6' },
@@ -88,7 +90,7 @@ export function Overview() {
   const error = summary.error || kpis.error;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* Shaped like the real Overview below, in the same order and the same
           grids, so nothing jumps when the data lands. Only the sections that
           always render are mimicked -- VAT, JPL, retention and suppliers are
@@ -119,17 +121,15 @@ export function Overview() {
 
       {!isLoading && !error && summary.data && kpis.data && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-display text-xl font-semibold text-ink">Overview</h2>
-            <button
-              type="button"
-              onClick={() => setShowPrintOptions(true)}
-              className="inline-flex items-center gap-1.5 rounded-sm border border-rule-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink hover:bg-canvas"
-            >
-              <IconPrinter className="h-3.75 w-3.75" />
-              Print / Save as PDF
-            </button>
-          </div>
+          <PageHeader
+            icon={<IconGrid className="h-4.5 w-4.5" />}
+            title="Overview"
+            actions={
+              <Button type="button" variant="secondary" size="sm" onClick={() => setShowPrintOptions(true)} icon={<IconPrinter />}>
+                Print / Save as PDF
+              </Button>
+            }
+          />
 
           <Section show={shows('kpis')}>
             <KpiCards kpis={kpis.data} />

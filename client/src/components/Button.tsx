@@ -1,17 +1,19 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { buttonClass, type ButtonSize, type ButtonVariant } from './buttonStyles';
 
-type Variant = 'outline' | 'primary';
-
-const base = 'inline-flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-medium disabled:opacity-60';
-const variants: Record<Variant, string> = {
-  primary: `${base} bg-accent text-white shadow-card hover:bg-accent-strong`,
-  outline: `${base} border border-rule-strong bg-surface text-ink-muted hover:border-danger hover:text-danger`,
-};
-
+// `icon` sits before the label (Royale's Button), sized by buttonStyles.
 export function Button({
   variant = 'primary',
+  size = 'md',
+  icon,
   className = '',
+  children,
   ...props
-}: { variant?: Variant } & ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button {...props} className={`${variants[variant]} ${className}`} />;
+}: { icon?: ReactNode; size?: ButtonSize; variant?: ButtonVariant } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button {...props} className={`${buttonClass(variant, size)} ${className}`}>
+      {icon}
+      {children}
+    </button>
+  );
 }

@@ -20,6 +20,8 @@ import { UnassignedPayrollEntriesModal } from '../components/UnassignedPayrollEn
 import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import type { Tone } from '../lib/tones';
+import { PageHeader } from '../components/PageHeader';
+import { IconPlus, IconUsers } from '../components/icons';
 import type {
   PayrollPeriod,
   PayrollPeriodListResponse,
@@ -213,37 +215,40 @@ export function Payroll() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold text-ink">Payroll</h2>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        icon={<IconUsers className="h-4.5 w-4.5" />}
+        title="Payroll"
+        actions={
+          <>
           {viewMode === 'periods' && (
-            <Button type="button" onClick={() => setShowNewPeriod(true)}>
-              + New period
+            <Button type="button" size="sm" onClick={() => setShowNewPeriod(true)} icon={<IconPlus />}>
+              New period
             </Button>
           )}
           {viewMode === 'workers' && (
-            <Button type="button" onClick={() => setWorkerModal('create')}>
-              + New worker
+            <Button type="button" size="sm" onClick={() => setWorkerModal('create')} icon={<IconPlus />}>
+              New worker
             </Button>
           )}
-          <div className="flex gap-1 self-start rounded-sm border border-rule-strong p-0.5">
+          <div className="flex gap-1 rounded-sm border border-rule-strong p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('periods')}
-              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'periods' ? 'bg-accent text-white' : 'text-ink-muted'}`}
+              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'periods' ? 'bg-accent text-on-accent' : 'text-ink-muted'}`}
             >
               By Week
             </button>
             <button
               type="button"
               onClick={() => setViewMode('workers')}
-              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'workers' ? 'bg-accent text-white' : 'text-ink-muted'}`}
+              className={`rounded-sm px-3 py-1.5 text-sm font-medium ${viewMode === 'workers' ? 'bg-accent text-on-accent' : 'text-ink-muted'}`}
             >
               By Worker
             </button>
           </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {viewMode === 'periods' ? (
         <>

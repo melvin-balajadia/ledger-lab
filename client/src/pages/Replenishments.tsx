@@ -18,6 +18,8 @@ import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
 import { DeletedItemsModal } from '../components/DeletedItemsModal';
 import type { Replenishment, ReplenishmentListResponse, ReplenishmentSummary } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconBox, IconPlus, IconTrash } from '../components/icons';
 
 const columns: ColumnDef<Replenishment>[] = [
   { key: 'txn_date', label: 'Date', sortable: true },
@@ -133,21 +135,20 @@ export function Replenishments() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold text-ink">Replenishments</h2>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setShowDeleted(true)}
-            className="text-sm font-medium text-ink-muted hover:text-ink hover:underline"
-          >
-            Deleted items
-          </button>
-          <Button type="button" onClick={() => setModal('create')}>
-            + New entry
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<IconBox className="h-4.5 w-4.5" />}
+        title="Replenishments"
+        actions={
+          <>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setShowDeleted(true)} icon={<IconTrash />}>
+              Deleted items
+            </Button>
+            <Button type="button" size="sm" onClick={() => setModal('create')} icon={<IconPlus />}>
+              New entry
+            </Button>
+          </>
+        }
+      />
 
       {summary ? (
         <SummaryStats
