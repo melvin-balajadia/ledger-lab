@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   useDeletePayrollEntries,
@@ -45,7 +45,13 @@ export function PayrollPeriodDetail() {
   const periodId = Number(id);
   const navigate = useNavigate();
   const { data: period, isLoading, error } = usePayrollPeriod(periodId);
-  const { data: entries } = usePayrollEntries(periodId);
+  const { data: entries, dataUpdatedAt } = usePayrollEntries(periodId);
+  // DataTable jumps to page 1 whenever fetchData changes. An inline edit
+  // refetches entries, which must reload in place instead -- so fetchEntries
+  // stays stable, reads the latest entries from this ref, and the table
+  // reloads on dataUpdatedAt via refreshKey.
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
 
   const updatePeriod = useUpdatePayrollPeriod();
   const deleteEntry = useDeletePayrollEntry(periodId);
@@ -86,8 +92,8 @@ export function PayrollPeriodDetail() {
   const restoreEntry = useRestorePayrollEntry(periodId);
 
   const fetchEntries = useCallback(
-    async (params: FetchParams) => clientPaginate(entries ?? [], params, ['worker_name', 'position']),
-    [entries],
+    async (params: FetchParams) => clientPaginate(entriesRef.current ?? [], params, ['worker_name', 'position']),
+    [],
   );
 
   // Catches the one gap copy-roster's exact-pair matching can't: a worker
@@ -209,6 +215,7 @@ export function PayrollPeriodDetail() {
           <DataTable<PayrollEntry>
             columns={columns}
             fetchData={fetchEntries}
+            refreshKey={dataUpdatedAt}
             rowKey="id"
             onView={(row) => navigate(`/payroll/workers/${row.worker_id}`)}
             onEdit={(row) => setEntryModal(row)}

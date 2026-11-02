@@ -633,7 +633,7 @@ export function DataTable<T extends { [key: string]: unknown }>({
   // synthetic second invocation sees it already "not mounted" and fires the
   // reset for real, discarding a page > 1 seeded from initialState within
   // the same tick it was restored.
-  const mountSnapshotRef = useRef({ debouncedSearch, filters, perPage });
+  const mountSnapshotRef = useRef({ debouncedSearch, filters, perPage, fetchData });
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const colPickerBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -681,17 +681,25 @@ export function DataTable<T extends { [key: string]: unknown }>({
 
   // Reset to page 1 when the user actively changes search/filters/perPage,
   // but NOT on the initial mount — that would discard the URL-restored page.
+  //
+  // fetchData counts as a filter: pages keep their own filter bar (supplier,
+  // dates, status...) outside this component and rebuild fetchData when it
+  // changes. Without it, picking a supplier while on page 3 asked for page 3
+  // of a one-page result and showed "no records" -- so a caller whose
+  // fetchData changes for any other reason must keep it stable and reload
+  // via refreshKey instead (see PayrollPeriodDetail).
   useEffect(() => {
     const baseline = mountSnapshotRef.current;
     if (
       debouncedSearch === baseline.debouncedSearch &&
       filters === baseline.filters &&
-      perPage === baseline.perPage
+      perPage === baseline.perPage &&
+      fetchData === baseline.fetchData
     ) {
       return;
     }
     setPage(1);
-  }, [debouncedSearch, filters, perPage]);
+  }, [debouncedSearch, filters, perPage, fetchData]);
 
   const handleSort = (key: string) => {
     if (sortKey !== key) {
