@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '../lib/api';
 import { clientPaginate } from '../lib/clientPaginate';
 import { formatMoney } from '../lib/formatMoney';
@@ -57,7 +57,6 @@ function LedgerFixModal({ item, onClose }: { item: ReviewItem; onClose: () => vo
 // auto-corrected (CLAUDE.md: data quality is a feature).
 export function Review() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data: items, dataUpdatedAt, error } = useReviewItems();
   const markReviewed = useMarkReviewed();
   const [reason, setReason] = useState('');
@@ -91,10 +90,10 @@ export function Review() {
     }
   }
 
+  // Any save made in the fix form refreshes everything (main.tsx), so
+  // closing only has to close.
   function closeFix() {
     setFixing(null);
-    // A fix can move any total on any screen.
-    queryClient.invalidateQueries();
   }
 
   const columns: ColumnDef<ReviewItem>[] = [
