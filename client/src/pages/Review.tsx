@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '../lib/api';
 import { clientPaginate } from '../lib/clientPaginate';
 import { formatMoney } from '../lib/formatMoney';
@@ -14,6 +14,8 @@ import { CashAdvanceForm } from '../components/CashAdvanceForm';
 import { AdditionalPaymentForm } from '../components/AdditionalPaymentForm';
 import { PurchaseOrderDetail } from '../components/PurchaseOrderDetail';
 import type { AdditionalPayment, CashAdvance, Replenishment, ReviewItem, ReviewSource } from '../types';
+import { PageHeader } from '../components/PageHeader';
+import { IconAlertTriangle } from '../components/icons';
 
 const SOURCE_LABEL: Record<ReviewSource, string> = {
   replenishment: 'Replenishment',
@@ -57,7 +59,6 @@ function LedgerFixModal({ item, onClose }: { item: ReviewItem; onClose: () => vo
 // auto-corrected (CLAUDE.md: data quality is a feature).
 export function Review() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data: items, dataUpdatedAt, error } = useReviewItems();
   const markReviewed = useMarkReviewed();
   const [reason, setReason] = useState('');
@@ -91,10 +92,10 @@ export function Review() {
     }
   }
 
+  // Any save made in the fix form refreshes everything (main.tsx), so
+  // closing only has to close.
   function closeFix() {
     setFixing(null);
-    // A fix can move any total on any screen.
-    queryClient.invalidateQueries();
   }
 
   const columns: ColumnDef<ReviewItem>[] = [
@@ -147,12 +148,10 @@ export function Review() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-semibold text-ink">Needs review</h2>
-        <p className="text-sm text-ink-muted">
-          Every row the Overview alerts count. Open one to fix it; it leaves this list once nothing is wrong with it.
-        </p>
-      </div>
+      <PageHeader icon={<IconAlertTriangle className="h-4.5 w-4.5" />} title="Needs review" />
+      <p className="text-sm text-ink-muted">
+        Every row the Overview alerts count. Open one to fix it; it leaves this list once nothing is wrong with it.
+      </p>
 
       {error && <p className="text-sm text-danger">Couldn’t load the review list: {error.message}</p>}
       {markReviewed.error && (

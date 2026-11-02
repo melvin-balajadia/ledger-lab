@@ -10,5 +10,6 @@ export interface BackupResult {
 export function useBackupNow() {
   return useMutation({
     mutationFn: () => postJson<BackupResult>('/api/backup', {}),
+    meta: { refreshesData: false }, // a backup changes no figures; see main.tsx
   });
 }
