@@ -12,6 +12,9 @@ export interface CsvColumn<T> {
   /** Overrides the raw value -- for cells whose display form is the real
    *  datum (e.g. a ratio shown as a percentage). Return a plain scalar. */
   csvValue?: (row: T) => unknown;
+  /** CSV only, opt-in: write the value as ="..." so Excel keeps it as typed.
+   *  A code like "2.0" or "2.10" otherwise opens as the number 2 or 2.1. */
+  excelText?: boolean;
 }
 
 export type ExportFormat = 'csv' | 'json';
@@ -64,11 +67,22 @@ function cell(value: unknown): string {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
+// A string literal inside a formula is inert -- nothing in it executes -- so
+// it skips the guard above; only its own quotes need doubling, then the CSV's.
+function excelTextCell(value: unknown): string {
+  const text = toText(value);
+  if (text === '') return cell(text);
+  const formula = `="${text.replace(/"/g, '""')}"`;
+  return `"${formula.replace(/"/g, '""')}"`;
+}
+
 // ─── Serialisation ────────────────────────────────────────────────────────
 
 export function buildCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
   const header = columns.map((c) => cell(c.label)).join(',');
-  const body = rows.map((row) => columns.map((c) => cell(valueOf(row, c))).join(','));
+  const body = rows.map((row) =>
+    columns.map((c) => (c.excelText ? excelTextCell(valueOf(row, c)) : cell(valueOf(row, c)))).join(','),
+  );
   // CRLF per RFC 4180. A quoted field may legally contain a bare LF (a
   // multi-line remark), and only CRLF row terminators keep the two apart.
   return [header, ...body].join('\r\n');

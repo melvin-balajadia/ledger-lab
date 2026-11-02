@@ -124,6 +124,19 @@ test('a missing nested branch is empty, not a crash', () => {
   assert.equal(lines(csv)[1], '""');
 });
 
+test('excelText keeps "2.0" as typed, in CSV only', () => {
+  const cols: CsvColumn<Row>[] = [{ key: 'nested.code', label: 'Code', excelText: true }];
+  const csv = (code: string | null) => lines(buildCsv([{ supplier: null, amount: '0', nested: { code } }], cols))[1];
+  assert.equal(csv('2.0'), '"=""2.0"""');
+  assert.equal(csv('2.10'), '"=""2.10"""');
+  assert.equal(csv(null), '""');
+  // Quotes inside stay a literal -- nothing can break out into a formula.
+  assert.equal(csv('a"b'), '"=""a""""b"""');
+  // JSON is untouched.
+  const json = JSON.parse(buildJson([{ supplier: null, amount: '0', nested: { code: '2.0' } }], cols, { dataset: 'x' }));
+  assert.equal(json.rows[0]['nested.code'], '2.0');
+});
+
 test('csvValue overrides the raw value', () => {
   const cols: CsvColumn<Row>[] = [{ key: 'flag', label: 'Over', csvValue: () => 'Yes' }];
   assert.equal(lines(buildCsv([{ supplier: null, amount: '0' }], cols))[1], '"Yes"');

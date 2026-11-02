@@ -15,12 +15,15 @@ export function ExportButton<T>({
   columns,
   dataset,
   defaultSelected,
+  options,
   scope,
 }: {
   columns: CsvColumn<T>[];
   dataset: string;
   /** Column keys ticked on open. Defaults to all of them. */
   defaultSelected?: string[];
+  /** Row choices shown in the dialog; `rows` should follow them. */
+  options?: React.ReactNode;
   rows: T[];
   scope?: string;
 }) {
@@ -46,6 +49,7 @@ export function ExportButton<T>({
           columns={columns}
           dataset={dataset}
           defaultSelected={defaultSelected}
+          options={options}
           scope={scope}
           estimatedRows={rows.length}
           collect={async () => rows}

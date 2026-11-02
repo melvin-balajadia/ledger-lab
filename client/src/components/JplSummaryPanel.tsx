@@ -7,6 +7,7 @@ import { IconCheck, IconChevronRight } from './icons';
 import { Panel } from './Panel';
 import { ExportButton } from './ExportButton';
 import { type CsvColumn } from '../lib/exportCsv';
+import { buildJplExportRows, MONEY_KEYS, type JplExportRow } from '../lib/jplExport';
 import { JplTransactionsModal } from './JplTransactionsModal';
 import type { BudgetSummaryRow, WbsRow } from '../types';
 
@@ -41,37 +42,49 @@ const DEFAULT_LEDGERS = CASH_COLUMNS.map((c) => c.key as string);
 const TOGGLEABLE = [...CASH_COLUMNS, CONTRACT_COLUMN];
 const TOGGLE_KEYS = TOGGLEABLE.map((c) => c.key as string);
 
-// One row per JPL code, with the budget item it sits under as a column --
-// the group subtotals and the grand total are left out for the same reason
-// RetentionPanel leaves its header totals out: they are column sums, and
-// mixing them in breaks the single-table shape that makes a CSV useful.
+// Accounting exports one row per budget item (the "mother" JPL code, as on
+// their SUMMARY sheet) by default, and can opt into the sub-codes under each
+// -- see buildJplExportRows. Grand totals are left out for the same reason
+// RetentionPanel leaves its header totals out.
 //
 // "Total cash out" is total_spend off v_planning_line_spend, i.e. always all
 // five ledgers -- NOT the on-screen "Selected total". The Include chips only
 // preselect which columns are ticked in the export dialog; they must never
-// change what a column headed "Total cash out" actually contains.
-type JplExportRow = WbsRow & { budget_item: string };
-
+// change what a column headed "Total cash out" actually contains, nor which
+// codes a budget item row adds up.
+//
 // key is pinned to keyof JplExportRow: every column here is a real field, so
 // a typo should be a compile error rather than a silently blank column in
 // her spreadsheet. (CsvColumn.key is a loose string because DataTable also
 // passes dotted paths.)
-const CSV_COLUMNS: (CsvColumn<JplExportRow> & { key: keyof JplExportRow })[] = [
-  { key: 'budget_item', label: 'Budget item' },
-  { key: 'code', label: 'JPL code' },
-  // Every code has an empty description in the source (CLAUDE.md) -- the
-  // column ships anyway, blank, rather than inventing a label.
-  { key: 'description', label: 'Description' },
+type ExportColumn = CsvColumn<JplExportRow> & { key: keyof JplExportRow };
+const MONEY_COLUMNS: ExportColumn[] = [
   { key: CONTRACT_KEY, label: 'Contract' },
   ...COST_CATEGORIES.map((c) => ({ key: c.column, label: c.label })),
   { key: 'total_spend', label: 'Total cash out' },
 ];
+const PARENT_COLUMNS: ExportColumn[] = [
+  // excelText: accounting pastes this into their SUMMARY sheet, and "2.0"
+  // must stay "2.0" there -- it marks a code that has sub-codes.
+  { key: 'code', label: 'JPL code', excelText: true },
+  { key: 'description', label: 'Description' },
+  ...MONEY_COLUMNS,
+];
+// Level and Budget item only mean something once sub-codes are mixed in.
+const WITH_SUB_CODE_COLUMNS: ExportColumn[] = [
+  { key: 'level', label: 'Level' },
+  { key: 'budget_item', label: 'Budget item' },
+  ...PARENT_COLUMNS,
+];
 
-// Recorded in the JSON export header. Both facts change how the file reads
-// and neither is recoverable from the rows themselves.
-function exportScope(codeCount: number, hidden: number): string {
+// Recorded in the JSON export header. These facts change how the file reads
+// and none is recoverable from the rows themselves.
+function exportScope(codeCount: number, hidden: number, includeSubCodes: boolean): string {
   const base = `${codeCount} codes with activity` + (hidden > 0 ? ` (${hidden} with none omitted)` : '');
-  return `${base}; Total cash out covers all five ledgers`;
+  const rows = includeSubCodes
+    ? 'budget item rows followed by their sub-codes -- filter Level before totalling'
+    : 'one row per budget item';
+  return `${base}; ${rows}; Total cash out covers all five ledgers`;
 }
 
 interface Group {
@@ -182,9 +195,12 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
 
   const allOpen = groups.length > 0 && expanded.size === groups.length;
 
-  // Flattened off `groups` rather than `active`, so the file comes out in
-  // exactly the order on screen: budget item, then code order.
-  const exportRows: JplExportRow[] = groups.flatMap((g) => g.rows.map((row) => ({ ...row, budget_item: g.label })));
+  // Grouped from every code with money on it, not from `active`: switching a
+  // chip off must not drop a code's other ledgers out of its budget item row.
+  // Same budget item / code order as on screen.
+  const [includeSubCodes, setIncludeSubCodes] = useState(false);
+  const withActivity = rows.filter((r) => MONEY_KEYS.some((k) => Number(r[k]) !== 0));
+  const exportRows = buildJplExportRows(buildGroups(withActivity, items, DEFAULT_LEDGERS), items, includeSubCodes);
 
   // Printing expands every group and puts it back afterwards. A PDF showing
   // 12 group rows under a heading that says "104 codes" is a report that
@@ -254,11 +270,14 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
           </button>
           <ExportButton
             rows={exportRows}
-            columns={CSV_COLUMNS}
+            columns={includeSubCodes ? WITH_SUB_CODE_COLUMNS : PARENT_COLUMNS}
             dataset="Cost by JPL code"
             // The chips preselect the ticked ledger columns; Contract is
             // ticked because the table shows it whatever the chips say.
+            // Level/Budget item are listed so they come up ticked when the
+            // sub-codes option adds them mid-dialog.
             defaultSelected={[
+              'level',
               'budget_item',
               'code',
               'description',
@@ -266,7 +285,25 @@ export function JplSummaryPanel({ rows, items }: { items: BudgetSummaryRow[]; ro
               ...columns.map((c) => c.key as string),
               'total_spend',
             ]}
-            scope={exportScope(active.length, hiddenCount)}
+            options={
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-sm px-1 py-1 hover:bg-surface-2">
+                <input
+                  type="checkbox"
+                  checked={includeSubCodes}
+                  onChange={(e) => setIncludeSubCodes(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-rule-strong text-accent focus:ring-accent"
+                />
+                <span>
+                  <span className="block text-sm text-ink">Include sub-JPL codes</span>
+                  <span className="block text-xs text-ink-faint">
+                    {includeSubCodes
+                      ? 'Each budget item row is followed by its codes. Filter on Level before totalling a column, or every peso counts twice.'
+                      : 'One row per budget item (mother JPL code), like the SUMMARY sheet.'}
+                  </span>
+                </span>
+              </label>
+            }
+            scope={exportScope(withActivity.length, rows.length - withActivity.length, includeSubCodes)}
           />
         </div>
       }

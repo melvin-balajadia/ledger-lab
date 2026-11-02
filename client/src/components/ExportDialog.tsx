@@ -34,6 +34,8 @@ export interface ExportDialogProps<T> {
   /** Row count as currently known, for the button label before it runs. */
   estimatedRows?: number;
   onClose: () => void;
+  /** Caller-specific row choices, shown above the column list. */
+  options?: React.ReactNode;
   /** One line describing the active filters, recorded in the JSON header. */
   scope?: string;
 }
@@ -57,6 +59,7 @@ export function ExportDialog<T>({
   defaultSelected,
   estimatedRows,
   onClose,
+  options,
   scope,
 }: ExportDialogProps<T>) {
   const [format, setFormat] = useState<ExportFormat>('csv');
@@ -181,6 +184,8 @@ export function ExportDialog<T>({
                 ))}
               </div>
             </Fieldset>
+
+            {options && <Fieldset label="Rows">{options}</Fieldset>}
 
             <Fieldset
               label={`Columns (${chosenColumns.length} of ${columns.length})`}
