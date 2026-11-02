@@ -82,6 +82,13 @@ router.get('/:id/replenishments', async (req, res, next) => {
     const where = ['r.project_id = ?'];
     const params = [projectId];
 
+    // One row by id, in the list's own shape -- the Needs-review screen uses
+    // it to open the same edit form this ledger's page does.
+    if (req.query.id) {
+      where.push('r.id = ?');
+      params.push(req.query.id);
+    }
+
     if (req.query.needs_review !== undefined) {
       where.push('r.needs_review = ?');
       params.push(req.query.needs_review === '1' ? 1 : 0);

@@ -664,3 +664,30 @@ export interface MilestoneInput {
 }
 
 export type PoPaymentType = 'downpayment' | 'progress' | 'before_delivery' | 'cod' | 'completion' | 'retention' | 'other';
+
+// One row on the Needs-review screen (server/routes/review.js). `parent_id`
+// is what Fix opens: the PO for a PO payment, the payroll week for an entry.
+export type ReviewSource =
+  | 'replenishment'
+  | 'cash_advance'
+  | 'additional_payment'
+  | 'purchase_order'
+  | 'po_payment'
+  | 'payroll_entry'
+  | 'payroll_period';
+
+export interface ReviewItem {
+  [key: string]: unknown;
+  key: string;
+  source: ReviewSource;
+  id: number;
+  parent_id: number | null;
+  date: string | null;
+  reference: string | null;
+  party: string | null;
+  description: string | null;
+  amount: string | null;
+  flagged: boolean;
+  severity: 'danger' | 'warn';
+  reasons: string[];
+}

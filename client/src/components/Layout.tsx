@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthMe, useLogout } from "../hooks/useAuth";
+import { useReviewItems } from "../hooks/useReview";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
 import { SITE_TITLE } from "../site.config";
 import { BackupButton } from "./BackupButton";
@@ -61,6 +62,7 @@ export function Layout() {
   }
 
   const displayName = user?.full_name ?? user?.username ?? "";
+  const reviewCount = useReviewItems().data?.length ?? 0;
 
   return (
     <div className="mx-auto flex max-w-295 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -137,6 +139,15 @@ export function Layout() {
           <NavLink to="/suppliers" className={navLinkClass}>
             <IconList className="h-3.75 w-3.75 opacity-75" />
             Suppliers
+          </NavLink>
+          <NavLink to="/review" className={navLinkClass}>
+            <IconAlertCircle className="h-3.75 w-3.75 opacity-75" />
+            Needs review
+            {reviewCount > 0 && (
+              <span className="rounded-full bg-warn-soft px-1.5 py-0.5 text-[11px] font-semibold text-warn tabular-nums">
+                {reviewCount}
+              </span>
+            )}
           </NavLink>
         </nav>
       </header>

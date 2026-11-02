@@ -12,6 +12,7 @@ import { Payroll } from './pages/Payroll';
 import { PayrollPeriodDetail } from './pages/PayrollPeriodDetail';
 import { WorkerPayrollDetail } from './pages/WorkerPayrollDetail';
 import { Suppliers } from './pages/Suppliers';
+import { Review } from './pages/Review';
 import { NotFound } from './pages/NotFound';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           <Route path="payroll/workers/:id" element={<WorkerPayrollDetail />} />
           <Route path="payroll/:id" element={<PayrollPeriodDetail />} />
           <Route path="suppliers" element={<Suppliers />} />
+          <Route path="review" element={<Review />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Route>

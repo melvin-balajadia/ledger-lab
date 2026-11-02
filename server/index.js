@@ -31,6 +31,7 @@ app.use('/api/projects', requireAuth, require('./routes/wbs'));
 app.use('/api/projects', requireAuth, require('./routes/payroll'));
 app.use('/api/projects', requireAuth, require('./routes/workers'));
 app.use('/api/projects', requireAuth, require('./routes/alerts'));
+app.use('/api/projects', requireAuth, require('./routes/review'));
 app.use('/api/suppliers', requireAuth, require('./routes/suppliers'));
 app.use('/api/meta', requireAuth, require('./routes/meta'));
 app.use('/api/backup', requireAuth, require('./routes/backup'));
