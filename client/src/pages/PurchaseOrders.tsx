@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
-import { formatMoney } from '../lib/formatMoney';
+import { formatMoney, PO_PCT_DIGITS } from '../lib/formatMoney';
 import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
 import { PROJECT_ID } from '../hooks/useProjectData';
 import { useRestorePurchaseOrder, useVoidedPurchaseOrders } from '../hooks/usePurchaseOrders';
@@ -74,7 +74,7 @@ const columns: ColumnDef<PurchaseOrder>[] = [
     // Paid exceeding contract is an anomaly (see the overpaid-PO data-quality
     // finding), not a healthy "on track" state -- flag it red, not green.
     render: (value) => (
-      <ProgressBar ratio={value as string | null} danger={value != null && Number(value) > 1} />
+      <ProgressBar ratio={value as string | null} digits={PO_PCT_DIGITS} danger={value != null && Number(value) > 1} />
     ),
   },
   {

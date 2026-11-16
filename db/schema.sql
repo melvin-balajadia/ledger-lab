@@ -139,7 +139,7 @@ CREATE TABLE purchase_orders (
   payment_terms     VARCHAR(160) NULL,              -- original free text, kept verbatim
   -- Retention applies to SOME POs only, per the agreed terms (accounting).
   -- 11 of 40 POs with recorded terms have a holdback; PHP 25.3 M in total.
-  retention_pct     DECIMAL(6,4) NULL,              -- 0.1000 = 10% held to completion
+  retention_pct     DECIMAL(10,7) NULL,             -- 0.1000000 = 10% held to completion
   status            ENUM('open','partially_paid','fully_paid','cancelled')
                     NOT NULL DEFAULT 'open',
   remarks           TEXT NULL,
@@ -226,7 +226,7 @@ CREATE TABLE po_payment_terms (
   purchase_order_id INT UNSIGNED NOT NULL,
   seq               TINYINT UNSIGNED NOT NULL,      -- 1, 2, 3...
   label             VARCHAR(80) NOT NULL,           -- 'DP', 'PB', 'RETENTION'
-  pct               DECIMAL(9,6) NOT NULL,          -- 0.300000 = 30%
+  pct               DECIMAL(10,7) NOT NULL,         -- 0.3000000 = 30%
   kind              ENUM('downpayment','progress','before_delivery','upon_delivery',
                          'completion','retention','other') NOT NULL DEFAULT 'other',
   -- a holdback: cash withheld until completion/acceptance, not yet due
@@ -677,7 +677,7 @@ SELECT po.id, po.project_id, po.por_no, po.po_date, s.name AS supplier,
        CASE WHEN po.status = 'cancelled' THEN 0
             ELSE po.contract_amount_php - COALESCE(SUM(pp.amount_php), 0) END AS balance_php,
        CASE WHEN po.contract_amount_php > 0
-            THEN ROUND(COALESCE(SUM(pp.amount_php),0) / po.contract_amount_php, 4)
+            THEN ROUND(CAST(COALESCE(SUM(pp.amount_php),0) AS DECIMAL(24,6)) / po.contract_amount_php, 7)
        END AS pct_paid,
        po.payment_terms, po.status
 FROM purchase_orders po

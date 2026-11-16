@@ -1,7 +1,7 @@
 import Decimal from 'decimal.js';
 
 export interface ContractShare {
-  share: string; // this payment / contract, as a fraction ("0.200000" = 20%)
+  share: string; // this payment / contract, as a fraction ("0.2000000" = 20%)
   cumulative: string; // (already paid + this payment) / contract
   exceeds: boolean; // cumulative > 100%
 }
@@ -16,7 +16,7 @@ export function contractShare(amount: string, contract: string, paid: string): C
     const c = new Decimal(contract);
     if (!a.isFinite() || a.lte(0) || !c.isFinite() || c.lte(0)) return null;
     const cumulative = a.plus(paid).div(c);
-    return { share: a.div(c).toFixed(6), cumulative: cumulative.toFixed(6), exceeds: cumulative.gt(1) };
+    return { share: a.div(c).toFixed(7), cumulative: cumulative.toFixed(7), exceeds: cumulative.gt(1) };
   } catch {
     return null; // decimal.js throws on '', '-', 'abc'
   }

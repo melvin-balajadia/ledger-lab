@@ -6,7 +6,7 @@ import {
   useVoidPoPayment,
   useVoidPurchaseOrder,
 } from '../hooks/usePurchaseOrders';
-import { formatCurrency, formatMoney, formatPercent } from '../lib/formatMoney';
+import { formatCurrency, formatMoney, formatPercent, PO_PCT_DIGITS } from '../lib/formatMoney';
 import { RecordPaymentForm } from './RecordPaymentForm';
 import { PurchaseOrderAttachments } from './PurchaseOrderAttachments';
 import { DeletedItemsModal } from './DeletedItemsModal';
@@ -202,7 +202,7 @@ export function PurchaseOrderDetail({ poId, onClose }: { poId: number; onClose: 
                 <tr key={m.id} className="border-t border-rule">
                   <td className="py-1.5 pr-3">{m.seq}</td>
                   <td className="py-1.5 pr-3">{m.label}</td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(m.pct)}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(m.pct, PO_PCT_DIGITS)}</td>
                   <td className="py-1.5 pr-3">{m.kind}</td>
                   <td className="py-1.5">{m.is_holdback ? 'Yes' : '—'}</td>
                 </tr>
@@ -245,7 +245,7 @@ export function PurchaseOrderDetail({ poId, onClose }: { poId: number; onClose: 
                   <td className="py-1.5 pr-3 text-right tabular-nums">
                     <NativeAmount native={p.amount} php={p.amount_php} currency={p.currency} />
                   </td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(p.share_of_contract ?? null)}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(p.share_of_contract ?? null, PO_PCT_DIGITS)}</td>
                   <td className="py-1.5 pr-3">{p.voucher_no ?? '—'}</td>
                   <td className="py-1.5 text-right">
                     <button
@@ -275,7 +275,7 @@ export function PurchaseOrderDetail({ poId, onClose }: { poId: number; onClose: 
                     Number(po.payment_totals.paid_pct) > 1 ? 'text-danger' : ''
                   }`}
                 >
-                  {formatPercent(po.payment_totals.paid_pct)}
+                  {formatPercent(po.payment_totals.paid_pct, PO_PCT_DIGITS)}
                 </td>
                 <td colSpan={2}></td>
               </tr>
@@ -286,7 +286,7 @@ export function PurchaseOrderDetail({ poId, onClose }: { poId: number; onClose: 
                 <td className="py-1.5 pr-3 text-right tabular-nums">
                   <NativeAmount native={po.payment_totals.unpaid} php={po.balance_php} currency={po.currency} />
                 </td>
-                <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(po.payment_totals.unpaid_pct)}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(po.payment_totals.unpaid_pct, PO_PCT_DIGITS)}</td>
                 <td colSpan={2}></td>
               </tr>
             </tfoot>
@@ -306,7 +306,7 @@ export function PurchaseOrderDetail({ poId, onClose }: { poId: number; onClose: 
       {po.retention && (
         <Section title="Retention — not a payable, held until milestone reached">
           <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-3">
-            <Info label="Retention rate" value={formatPercent(po.retention.retention_pct)} />
+            <Info label="Retention rate" value={formatPercent(po.retention.retention_pct, PO_PCT_DIGITS)} />
             <Info label="Held" value={formatMoney(po.retention.retention_amount)} />
             <Info label="Released" value={formatMoney(po.retention.retention_released)} />
             <Info label="Outstanding" value={formatMoney(po.retention.retention_outstanding)} />

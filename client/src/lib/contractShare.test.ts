@@ -6,21 +6,21 @@ import { contractShare } from './contractShare.ts';
 
 test('share and cumulative of contract', () => {
   assert.deepEqual(contractShare('100000', '500000', '0'), {
-    share: '0.200000',
-    cumulative: '0.200000',
+    share: '0.2000000',
+    cumulative: '0.2000000',
     exceeds: false,
   });
   // POR16513: 20% DP + 30% PB already paid, next 30% PB
   assert.deepEqual(contractShare('444900', '1483000', '741500'), {
-    share: '0.300000',
-    cumulative: '0.800000',
+    share: '0.3000000',
+    cumulative: '0.8000000',
     exceeds: false,
   });
 });
 
 test('decimals stay exact', () => {
-  assert.equal(contractShare('333.33', '1000', '0')?.share, '0.333330');
-  assert.equal(contractShare('0.1', '0.3', '0.2')?.cumulative, '1.000000');
+  assert.equal(contractShare('333.33', '1000', '0')?.share, '0.3333300');
+  assert.equal(contractShare('0.1', '0.3', '0.2')?.cumulative, '1.0000000');
   assert.equal(contractShare('0.1', '0.3', '0.2')?.exceeds, false);
 });
 

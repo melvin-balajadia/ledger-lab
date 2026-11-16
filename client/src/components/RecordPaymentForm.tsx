@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Decimal from 'decimal.js';
 import { useRecordPayment } from '../hooks/usePurchaseOrders';
 import { useFxRates, suggestFxRate } from '../hooks/useFxRates';
-import { formatMoney, formatPercent } from '../lib/formatMoney';
+import { formatMoney, formatPercent, PO_PCT_DIGITS } from '../lib/formatMoney';
 import { contractShare } from '../lib/contractShare';
 import type { PoPaymentType } from '../types';
 
@@ -116,7 +116,7 @@ export function RecordPaymentForm({
       {/* Warning only -- the server doesn't block overpayment, and neither does this. */}
       {share && (
         <p className={`text-xs ${share.exceeds ? 'text-danger' : 'text-ink-faint'}`}>
-          = {formatPercent(share.share)} of contract · cumulative {formatPercent(share.cumulative)}
+          = {formatPercent(share.share, PO_PCT_DIGITS)} of contract · cumulative {formatPercent(share.cumulative, PO_PCT_DIGITS)}
           {share.exceeds && ' — exceeds contract'}
         </p>
       )}

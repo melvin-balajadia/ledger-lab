@@ -67,6 +67,11 @@ function validateMilestones(milestones) {
     if (!m.label) errors.push(`milestones[${i}].label is required`);
     if (parsed[i] === null || !parsed[i].gt(0)) {
       errors.push(`milestones[${i}].pct must be a positive number`);
+    } else if (parsed[i].decimalPlaces() > 7) {
+      // po_payment_terms.pct is DECIMAL(10,7) = 5 decimal places as a
+      // percentage. MySQL would round anything finer silently, AFTER the
+      // sum-to-100% check below passed on the unrounded figures.
+      errors.push(`milestones[${i}].pct allows at most 5 decimal places as a percentage`);
     }
     if (m.kind && !MILESTONE_KINDS.includes(m.kind)) {
       errors.push(`milestones[${i}].kind must be one of ${MILESTONE_KINDS.join(', ')}`);
@@ -76,7 +81,7 @@ function validateMilestones(milestones) {
   const pcts = parsed.map((d) => d ?? new Decimal(0));
   const sum = pcts.reduce((acc, d) => acc.plus(d), new Decimal(0));
   if (!sum.equals(1)) {
-    errors.push(`milestone percentages sum to ${sum.times(100).toFixed(2)}%, must sum to exactly 100%`);
+    errors.push(`milestone percentages sum to ${sum.times(100).toFixed(5)}%, must sum to exactly 100%`);
   }
 
   // Holdback must be a MINORITY of the whole schedule -- checked as a total
@@ -314,7 +319,7 @@ router.get('/:id/purchase-orders/:poId', async (req, res, next) => {
     // po_payments.pct_of_contract, which only the ETL ever filled and which
     // nothing updates when the contract amount is edited.
     const [payments] = await pool.query(
-      `SELECT pp.*, ROUND(pp.amount / NULLIF(po.contract_amount, 0), 6) AS share_of_contract
+      `SELECT pp.*, ROUND(pp.amount / NULLIF(po.contract_amount, 0), 7) AS share_of_contract
        FROM po_payments pp JOIN purchase_orders po ON po.id = pp.purchase_order_id
        WHERE pp.purchase_order_id = ? AND pp.voided_at IS NULL ORDER BY pp.paid_on`,
       [req.params.poId]
@@ -323,9 +328,9 @@ router.get('/:id/purchase-orders/:poId', async (req, res, next) => {
     // is shown separately and never subtracted here (CLAUDE.md #8).
     const [[paymentTotals]] = await pool.query(
       `SELECT t.paid,
-              ROUND(t.paid / NULLIF(t.contract_amount, 0), 6) AS paid_pct,
+              ROUND(t.paid / NULLIF(t.contract_amount, 0), 7) AS paid_pct,
               t.unpaid,
-              ROUND(t.unpaid / NULLIF(t.contract_amount, 0), 6) AS unpaid_pct
+              ROUND(t.unpaid / NULLIF(t.contract_amount, 0), 7) AS unpaid_pct
        FROM (
          SELECT po.contract_amount,
                 COALESCE(SUM(pp.amount), 0) AS paid,
@@ -419,7 +424,7 @@ router.post('/:id/purchase-orders', async (req, res, next) => {
       [
         projectId, por_no, msr_no || null, po_date, supplier_id, budgetItemId, planning_line_id || null,
         item_description || null, ref_no || null, currency || 'PHP', contract_amount, fx_rate || 1,
-        paymentTermsText, retentionPct.gt(0) ? retentionPct.toFixed(4) : null, remarks || null, appUser,
+        paymentTermsText, retentionPct.gt(0) ? retentionPct.toFixed(7) : null, remarks || null, appUser,
       ]
     );
     const poId = result.insertId;
@@ -441,7 +446,7 @@ router.post('/:id/purchase-orders', async (req, res, next) => {
       after: {
         id: poId, project_id: projectId, por_no, po_date, supplier_id, budget_item_id: budgetItemId,
         planning_line_id: planning_line_id || null, contract_amount, payment_terms: paymentTermsText,
-        retention_pct: retentionPct.gt(0) ? retentionPct.toFixed(4) : null, milestones, created_by: appUser,
+        retention_pct: retentionPct.gt(0) ? retentionPct.toFixed(7) : null, milestones, created_by: appUser,
       },
     });
 
@@ -528,7 +533,7 @@ router.patch('/:id/purchase-orders/:poId', async (req, res, next) => {
     let paymentTermsText = before.payment_terms;
     if (milestones) {
       const derived = deriveFromMilestones(milestones);
-      retentionPct = derived.retentionPct.gt(0) ? derived.retentionPct.toFixed(4) : null;
+      retentionPct = derived.retentionPct.gt(0) ? derived.retentionPct.toFixed(7) : null;
       paymentTermsText = derived.paymentTermsText;
     }
 

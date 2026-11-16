@@ -1,4 +1,4 @@
-import { formatMoney, formatPercent } from '../lib/formatMoney';
+import { formatMoney, formatPercent, PO_PCT_DIGITS } from '../lib/formatMoney';
 import { type CsvColumn } from '../lib/exportCsv';
 import { ExportButton } from './ExportButton';
 import { Panel } from './Panel';
@@ -56,7 +56,7 @@ export function RetentionPanel({ data }: { data: RetentionSummary }) {
                 <tr key={p.id} className="border-t border-rule">
                   <td className="py-1.5 pr-3 font-mono">{p.por_no}</td>
                   <td className="py-1.5 pr-3">{p.supplier}</td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(p.retention_pct)}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{formatPercent(p.retention_pct, PO_PCT_DIGITS)}</td>
                   <td className="py-1.5 pr-3 text-right font-mono">{formatMoney(p.retention_amount)}</td>
                   <td className="py-1.5 pr-3 text-right font-mono">{formatMoney(p.retention_released)}</td>
                   <td className="py-1.5 text-right font-mono">{formatMoney(p.retention_outstanding)}</td>

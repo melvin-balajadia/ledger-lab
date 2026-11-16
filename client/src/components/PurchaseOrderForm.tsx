@@ -4,6 +4,15 @@ import { useCreatePurchaseOrder, usePurchaseOrdersByNumber, useUpdatePurchaseOrd
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useFxRates, suggestFxRate } from '../hooks/useFxRates';
 import { formatMoney } from '../lib/formatMoney';
+
+// A half-typed milestone ('', '-') counts as 0 rather than throwing.
+function percentOrZero(value: string): Decimal {
+  try {
+    return new Decimal(value || 0);
+  } catch {
+    return new Decimal(0);
+  }
+}
 import { SupplierAutocomplete } from './SupplierAutocomplete';
 import { PlanningLinePicker } from './PlanningLinePicker';
 import type { MilestoneInput, MilestoneKind, PlanningLine, PurchaseOrderDetail, Supplier } from '../types';
@@ -58,12 +67,9 @@ export function PurchaseOrderForm({ po, onClose }: { onClose: () => void; po?: P
     po && po.milestones.length > 0
       ? po.milestones.map((m) => ({
           label: m.label,
-          // pct is stored to 6 decimal places (a fraction), so 4 decimal
-          // places as a percentage is the real precision -- rounding here
-          // strips float noise like "16.666700000000002" that would
-          // otherwise make an exact 100% schedule display as not summing
-          // to 100%.
-          pctPercent: String(Number((Number(m.pct) * 100).toFixed(4))),
+          // Decimal, not Number: "0.1666670" -> "16.6667" exactly, with no
+          // float noise like "16.666700000000002".
+          pctPercent: new Decimal(m.pct).times(100).toFixed(),
           kind: m.kind as MilestoneKind,
           is_holdback: Boolean(m.is_holdback),
         }))
@@ -74,17 +80,15 @@ export function PurchaseOrderForm({ po, onClose }: { onClose: () => void; po?: P
     setMilestones((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   }
 
-  // Rounded to 4 decimal places (pct is stored to 6, i.e. 4 as a percentage)
-  // so summing several rows can't leave binary-float noise (e.g.
-  // 100.00000000000001) that would make a genuinely-100% schedule look wrong.
-  const totalPercentRaw = milestones.reduce((sum, row) => sum + (Number(row.pctPercent) || 0), 0);
-  const totalPercent = Number(totalPercentRaw.toFixed(4));
+  // Summed as Decimal, unrounded: 33.33333 x 3 is 99.99999, not 100 -- the
+  // server rejects that too, so the total must not round it into looking right.
+  const totalPercent = milestones.reduce((sum, row) => sum.plus(percentOrZero(row.pctPercent)), new Decimal(0));
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const milestoneInputs: MilestoneInput[] = milestones.map((row) => ({
       label: row.label,
-      pct: String(Number(row.pctPercent) / 100),
+      pct: percentOrZero(row.pctPercent).div(100).toFixed(), // toFixed(): never "1e-7"
       kind: row.kind,
       is_holdback: row.is_holdback,
     }));
@@ -247,8 +251,8 @@ export function PurchaseOrderForm({ po, onClose }: { onClose: () => void; po?: P
       <div className="flex flex-col gap-3 border-t border-rule pt-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold tracking-wide text-ink-muted uppercase">Payment terms / milestones</span>
-          <span className={`text-xs font-semibold tabular-nums ${totalPercent === 100 ? 'text-accent' : 'text-danger'}`}>
-            Total: {totalPercent}%
+          <span className={`text-xs font-semibold tabular-nums ${totalPercent.equals(100) ? 'text-accent' : 'text-danger'}`}>
+            Total: {totalPercent.toFixed()}%
           </span>
         </div>
 
@@ -264,8 +268,8 @@ export function PurchaseOrderForm({ po, onClose }: { onClose: () => void; po?: P
             />
             <input
               type="number"
-              step="1"
-              min="1"
+              step="0.00001"
+              min="0.00001"
               max="100"
               required
               placeholder="%"

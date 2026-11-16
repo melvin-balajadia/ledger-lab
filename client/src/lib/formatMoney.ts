@@ -1,3 +1,5 @@
+import Decimal from 'decimal.js';
+
 const peso = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
 const foreignFormatters = new Map<string, Intl.NumberFormat>();
 
@@ -40,9 +42,17 @@ export function formatAmountCell(value: string): string {
   return n === 0 ? '—' : plain.format(n);
 }
 
-export function formatPercent(ratio: string | null): string {
+// PO percentages (milestones, % paid, retention, payment shares) carry 5
+// decimal places as a percentage -- the DB stores them as DECIMAL(10,7)
+// fractions (migration 026), so all 5 digits are real. Dashboard
+// indicators keep the 1-place default.
+export const PO_PCT_DIGITS = 5;
+
+// Decimal, not Number: the shift by 100 and the rounding stay exact on the
+// DECIMAL string (ROUND_HALF_UP), so the last digit is never float noise.
+export function formatPercent(ratio: string | null, digits = 1): string {
   if (ratio == null) return '—';
-  return `${(Number(ratio) * 100).toFixed(1)}%`;
+  return `${new Decimal(ratio).times(100).toFixed(digits)}%`;
 }
 
 // Sums DECIMAL strings as integer cents (BigInt), never as JS floats -- for
